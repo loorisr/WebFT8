@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebFT8</title>
+<meta name="description" content="FT8 for HF amateur radio, in your browser: decode, transmit, auto-sequence, log.">
+<meta name="theme-color" content="#0b0f14">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121821; --panel2:#18202b; --line:#243041; --text:#e6edf3; --dim:#8b98a9;
+  --accent:#3fb6ff; --rx:#3ddc84; --txc:#ff6b6b; --cq:#38e1c6; --me:#ff6b6b; --warn:#ffd166;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.4 var(--sans)}
+button,select,input,textarea{font:inherit;color:inherit}
+.app{display:grid;grid-template-rows:auto minmax(270px,38vh) 1fr auto auto;height:100vh;gap:10px;padding:10px}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.2px}
+.brand .logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--rx),var(--accent));display:grid;place-items:center;color:#05202a;font:700 12px var(--mono)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:4px;align-items:center}
+@media (max-width:1400px){.chip.opt{display:none}}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font:500 12px var(--mono);color:var(--dim);white-space:nowrap}
+.chip b{color:var(--text);font-weight:600}
+.chip.rx{color:var(--rx);border-color:#1f5a3a}
+.chip.txon{color:#fff;background:var(--txc);border-color:var(--txc);animation:pulse 1s infinite}
+.chip.warn{color:var(--warn);border-color:#6b5a1f}
+.chip.slot{position:relative;overflow:hidden;min-width:112px}
+.chip.slot i{position:absolute;left:0;top:0;bottom:0;background:#3fb6ff22;width:0}
+.chip.slot.mine i{background:#ff6b6b33}
+.chip.slot span{position:relative}
+@keyframes pulse{50%{opacity:.75}}
+.spacer{flex:1}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 11px;cursor:pointer;font-weight:500;transition:.12s;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04121c;font-weight:600}
+.btn.danger{background:#3a1518;border-color:#6b2328;color:#ffb3b3}
+.btn.on{border-color:var(--rx);color:var(--rx)}
+.btn.txen{background:#3a1518;border-color:#6b2328;color:#ffb3b3}
+.btn.txen.on{background:var(--txc);border-color:var(--txc);color:#fff}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn[hidden]{display:none}
+.top{display:grid;grid-template-columns:1fr 250px;gap:10px;min-height:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.wfwrap{position:relative;display:flex;flex-direction:column;user-select:none;min-height:0}
+#spec{height:70px;width:100%;display:block;border-bottom:1px solid var(--line);cursor:crosshair;flex:none}
+#wfbox{flex:1;position:relative;min-height:100px;cursor:crosshair}
+#wf{position:absolute;inset:0;width:100%;height:100%;display:block}
+.wfhint{position:absolute;right:10px;bottom:8px;font:11px var(--mono);color:var(--dim);background:#0b0f14aa;padding:2px 7px;border-radius:6px;pointer-events:none}
+.side{display:flex;flex-direction:column;gap:9px;padding:12px;overflow:auto}
+#clock{width:92px;height:92px;display:block}
+.sidetop{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center}
+.sidetop .qrow{grid-template-columns:1fr}
+.qrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.qrow select,.qrow input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 7px;font:12px var(--mono)}
+.toggles{display:flex;flex-wrap:wrap;gap:5px}
+.toggles .btn{flex:1}
+label.mini{font-size:11px;color:var(--dim);display:block;margin-bottom:2px}
+.panes{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;min-height:0;position:relative}
+.pane{display:flex;flex-direction:column;min-height:0}
+.pbar{display:flex;align-items:center;gap:6px;padding:7px 10px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+.list{flex:1;overflow:auto;font:13px/1.5 var(--mono);padding:4px 0}
+.ln{display:grid;grid-template-columns:58px 34px 38px 44px 1fr;gap:6px;padding:0 10px;white-space:nowrap;cursor:pointer}
+.ln:hover{background:#ffffff0a}
+.ln>span{overflow:hidden;text-overflow:ellipsis}
+.ln .n{color:var(--dim);text-align:right}
+.ln .m{color:var(--text)}
+.ln.cq{background:#38e1c614}
+.ln.cq .m{color:var(--cq)}
+.ln.tome{background:#ff6b6b26}
+.ln.tome .m{color:#ffc2c2}
+.ln.mytx{background:#ffd16614;cursor:default}
+.ln.mytx .m{color:var(--warn)}
+.ln .ap{color:var(--dim);font-size:10px;margin-left:6px}
+.sep{display:flex;align-items:center;gap:8px;padding:3px 10px;font:11px var(--mono);color:#56637a}
+.sep:before,.sep:after{content:'';flex:1;height:1px;background:#1f2937}
+.call{color:var(--accent)}
+.ln.cq .call{color:var(--cq);font-weight:600}
+.call.worked{color:#7a8699;text-decoration:line-through}
+.call.me{color:var(--warn);font-weight:600}
+.txmsgs{display:grid;grid-template-columns:repeat(6,1fr) 1.4fr;gap:6px}
+.txmsgs .btn{font:12px var(--mono);padding:8px 6px;overflow:hidden;text-overflow:ellipsis;text-align:left;position:relative}
+.txmsgs .btn kbd{font:10px var(--mono);color:var(--dim);margin-right:5px}
+.txmsgs .btn.next{border-color:var(--txc);box-shadow:inset 3px 0 0 var(--txc)}
+.txmsgs .btn.sending{background:#3a1518}
+.free{display:flex;gap:6px}
+.free input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font:12px var(--mono);text-transform:uppercase}
+.free input.bad{border-color:#8a2a2f}
+.qso{display:grid;grid-template-columns:130px 80px 68px 68px auto 1fr 150px 92px auto;gap:8px;align-items:center}
+.qso input,.qso select{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:13px var(--mono);min-width:0}
+.qso input{text-transform:uppercase}
+.qso input:focus,.free input:focus{outline:none;border-color:var(--accent)}
+.badge{font:600 11px var(--mono);padding:4px 8px;border-radius:6px;border:1px solid var(--line);color:var(--dim);text-align:center;min-width:54px}
+.badge.new{color:var(--rx);border-color:#1f5a3a}
+.badge.dupe{color:#fff;background:#8a2a2f;border-color:#8a2a2f}
+.qstate{font:12px var(--mono);color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qstate b{color:var(--text)}
+.modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:10;padding:14px}
+.modal.open{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:min(920px,100%);max-height:92vh;overflow:auto;padding:18px 20px}
+.sheet h2{margin:0 0 4px;font-size:18px}
+.sheet h3{margin:18px 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--dim)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.grid input,.grid select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.note{font-size:12px;color:var(--dim)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+table.log{width:100%;border-collapse:collapse;font:12.5px var(--mono)}
+table.log th{text-align:left;color:var(--dim);font-weight:500;border-bottom:1px solid var(--line);padding:6px 6px}
+table.log td{border-bottom:1px solid #1b2431;padding:5px 6px;white-space:nowrap}
+table.log td.x{cursor:pointer;color:#ff9b9b;text-align:center}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:9px 15px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;z-index:20;max-width:90vw}
+.toast.show{opacity:1}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;background:#0b0f14e0;z-index:2;text-align:center;padding:20px;border-radius:14px}
+.empty p{margin:0;color:var(--dim);max-width:520px}
+@media (max-width:1000px){
+  .app{height:auto;min-height:100vh;grid-template-rows:auto 300px auto auto auto}
+  .top{grid-template-columns:1fr}
+  .panes{grid-template-columns:1fr}
+  .pane{height:320px}
+  .txmsgs{grid-template-columns:repeat(3,1fr)}
+  .txmsgs .free{grid-column:1 / -1}
+  .qso{grid-template-columns:1fr 80px 68px 68px}
+  .qstate{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><div class="logo">FT8</div>WebFT8</div>
+    <div class="chips">
+      <span class="chip rx" id="cState">IDLE</span>
+      <span class="chip">UTC <b id="cUtc">--:--:--</b></span>
+      <span class="chip slot" id="cSlot"><i id="cSlotBar"></i><span id="cSlotTxt">--</span></span>
+      <span class="chip" id="cDt" data-i18n-title="dtTip">DT <b id="cDtV">--</b></span>
+      <span class="chip opt">DEC <b id="cDec">--</b></span>
+      <span class="chip opt" id="cBand">20m</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="bInstall" hidden data-i18n="install">Install app</button>
+    <button class="btn primary" id="bStart" data-i18n="start">▶ Start sound card</button>
+    <button class="btn" id="bDemo" data-i18n="demo">Demo</button>
+    <button class="btn" id="bFile" data-i18n="openWav">Open WAV</button>
+    <input type="file" id="fileIn" accept="audio/*,.wav" multiple hidden>
+    <button class="btn" id="bLog" data-i18n="log">Log</button>
+    <button class="btn" id="bSettings" data-i18n-title="settingsT" aria-label="Settings">⚙</button>
+  </header>
+
+  <div class="top">
+    <div class="card wfwrap">
+      <canvas id="spec"></canvas>
+      <div id="wfbox"><canvas id="wf"></canvas><div class="wfhint" data-i18n="wfHint">click: RX freq · Shift+click / right-click: TX freq</div></div>
+    </div>
+    <div class="card side">
+      <div class="sidetop"><canvas id="clock"></canvas>
+      <div class="qrow">
+        <div><label class="mini" data-i18n="rxHz">RX Hz</label><input id="qRx" type="number" step="1" min="100" max="3500"></div>
+        <div><label class="mini" data-i18n="txHz">TX Hz</label><input id="qTx" type="number" step="1" min="100" max="3500"></div>
+      </div></div>
+      <div class="toggles">
+        <button class="btn sm" id="bTx2Rx" data-i18n-title="tx2rxTip">TX→RX</button>
+        <button class="btn sm" id="bRx2Tx" data-i18n-title="rx2txTip">RX→TX</button>
+      </div>
+      <div class="toggles">
+        <button class="btn sm" id="tPar" data-i18n-title="parTip">TX 1st</button>
+        <button class="btn sm" id="tAuto" data-i18n-title="autoTip">Auto seq</button>
+      </div>
+      <div class="toggles">
+        <button class="btn txen" id="bTxEn" data-i18n="txEnable">Enable TX</button>
+      </div>
+      <div class="toggles">
+        <button class="btn sm danger" id="bHalt" data-i18n="halt">Halt TX</button>
+        <button class="btn sm" id="bTune" data-i18n="tune">Tune</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panes">
+    <div class="card pane">
+      <div class="pbar"><span data-i18n="activity">Band activity</span><span class="spacer"></span><span class="note" id="actCount"></span>
+        <button class="btn sm" id="bCqOnly" data-i18n="cqOnly">CQ only</button><button class="btn sm" id="bClrAct" data-i18n="clear">Clear</button></div>
+      <div class="list" id="act"></div>
+    </div>
+    <div class="card pane">
+      <div class="pbar"><span data-i18n="rxfreq">RX frequency &amp; my QSOs</span><span class="spacer"></span><button class="btn sm" id="bClrRxf" data-i18n="clear">Clear</button></div>
+      <div class="list" id="rxf"></div>
+    </div>
+    <div class="empty" id="empty">
+      <div style="font-size:20px;font-weight:600" data-i18n="readyTitle">Ready for FT8</div>
+      <p data-i18n="readyText">Connect your rig's audio, set your call and grid in Settings, and press Start sound card. Or try the demo: a simulated band where stations call CQ and answer you.</p>
+      <div style="display:flex;gap:8px"><button class="btn primary" id="bStart2" data-i18n="start">▶ Start sound card</button><button class="btn" id="bDemo2" data-i18n="runDemo">Run demo</button></div>
+    </div>
+  </div>
+
+  <div class="txmsgs" id="txmsgs"></div>
+
+  <div class="qso">
+    <input id="dxCall" data-i18n-ph="dxCall" placeholder="DX CALL" autocomplete="off">
+    <input id="dxGrid" data-i18n-ph="dxGrid" placeholder="GRID" autocomplete="off" maxlength="6">
+    <input id="rptS" data-i18n-title="rptSent" placeholder="-10" maxlength="3">
+    <input id="rptR" data-i18n-title="rptRcvd" placeholder="RCVD" maxlength="3">
+    <span class="badge" id="dupe">—</span>
+    <span class="qstate" id="qstate"></span>
+    <select id="band"></select>
+    <input id="dial" data-i18n-title="dialTip" placeholder="MHz" inputmode="decimal">
+    <button class="btn" id="bLogQso" data-i18n="logQso">Log (F9)</button>
+  </div>
+</div>
+
+<!-- Settings -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <div class="row"><h2 data-i18n="settingsT">Settings</h2><span class="spacer"></span><button class="btn" id="bClose" data-i18n="done">Done</button></div>
+    <h3 data-i18n="station">Station</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="myCall">My call</label><input id="sCall" style="text-transform:uppercase"></div>
+      <div><label class="mini" data-i18n="myGrid">My grid (4 or 6)</label><input id="sGrid" style="text-transform:uppercase" maxlength="6"></div>
+      <div><label class="mini" data-i18n="language">Language</label><select id="sLang"><option value="auto">Auto</option><option value="en">English</option><option value="fr">Français</option></select></div>
+    </div>
+    <h3>FT8</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="depth">Decode depth</label><select id="sDepth"><option value="1" data-i18n="fast">Fast</option><option value="2" data-i18n="normal">Normal</option><option value="3" data-i18n="deep">Deep</option></select></div>
+      <div><label class="mini" data-i18n="apDec">A-priori decoding (AP)</label><select id="sAp"><option value="1" data-i18n="on">On</option><option value="0" data-i18n="off">Off</option></select></div>
+      <div><label class="mini" data-i18n="cqMod">CQ modifier (DX, NA, EU, TEST…)</label><input id="sCqMod" style="text-transform:uppercase" maxlength="4"></div>
+      <div><label class="mini" data-i18n="rr73">Final message</label><select id="sRr73"><option value="RR73">RR73</option><option value="RRR">RRR</option></select></div>
+      <div><label class="mini" data-i18n="after73">After 73</label><select id="sStop73"><option value="1" data-i18n="disableTx">Disable TX</option><option value="0" data-i18n="callCq">Go back to CQ</option></select></div>
+      <div><label class="mini" data-i18n="autoLog">Log QSO</label><select id="sAutoLog"><option value="1" data-i18n="automatic">Automatically</option><option value="0" data-i18n="manual">Manually (F9)</option></select></div>
+      <div><label class="mini" data-i18n="watchdog">TX watchdog (minutes)</label><input id="sWd" type="number" min="1" max="99"></div>
+      <div><label class="mini" data-i18n="decodeAt">Decode at (s into slot)</label><input id="sDecAt" type="number" min="12" max="14.8" step="0.1"></div>
+    </div>
+    <h3 data-i18n="clockT">Clock</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="clockOff">Clock correction (ms)</label><input id="sClk" type="number" step="10"></div>
+      <div><label class="mini">&nbsp;</label><button class="btn" id="bSyncClk" style="width:100%" data-i18n="syncClk">Correct from decodes (DT)</button></div>
+      <div><label class="mini">&nbsp;</label><button class="btn" id="bZeroClk" style="width:100%" data-i18n="zeroClk">Reset to system clock</button></div>
+    </div>
+    <p class="note" data-i18n="clockNote">FT8 needs your clock within about ±1 s of UTC. Best: sync your computer's clock (NTP). If the DT of most stations is far from 0, use "Correct from decodes".</p>
+    <h3 data-i18n="audio">Audio</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="inDev">Input (from rig)</label><select id="sIn"></select></div>
+      <div><label class="mini" data-i18n="outDev">Output (to rig)</label><select id="sOut"></select></div>
+      <div><label class="mini" data-i18n="inGain">Input gain</label><input id="sGain" type="range" min="0.1" max="4" step="0.1"></div>
+      <div><label class="mini" data-i18n="txLvl">TX audio level</label><input id="sTxLvl" type="range" min="0.02" max="1" step="0.01"></div>
+      <div><label class="mini" data-i18n="monitor">Monitor RX audio</label><select id="sMon"><option value="0" data-i18n="off">Off</option><option value="1" data-i18n="on">On</option></select></div>
+    </div>
+    <p class="note"><span data-i18n="alcNote">Set the TX level so the ALC does not move. FT8 is constant-envelope; overdriving makes splatter that blocks other stations.</span> <span id="engineInfo"></span></p>
+    <h3>PTT</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="pttMethod">PTT method</label><select id="sPtt"><option value="vox">VOX / none</option><option value="rts">Serial RTS</option><option value="dtr">Serial DTR</option></select></div>
+      <div><label class="mini">&nbsp;</label><button class="btn" id="bPort" style="width:100%" data-i18n="choosePort">Choose serial port…</button></div>
+      <div><label class="mini" data-i18n="pttLead">PTT lead (ms)</label><input id="sLead" type="number" min="0" max="400"></div>
+    </div>
+    <p class="note" id="portInfo" data-i18n="portNote">Serial PTT uses Web Serial (Chrome / Edge). Both RTS and DTR are released as soon as the port opens.</p>
+    <h3 data-i18n="display">Display</h3>
+    <div class="grid">
+      <div><label class="mini" data-i18n="wfRange">Waterfall range</label><select id="sRange"><option value="200-3000">200 – 3000 Hz</option><option value="0-3500">0 – 3500 Hz</option><option value="500-2500">500 – 2500 Hz</option><option value="1000-2000">1000 – 2000 Hz</option></select></div>
+      <div><label class="mini" data-i18n="wfSpan">Waterfall height shows</label><select id="sSpan"><option value="15">15 s</option><option value="30">30 s</option><option value="60">60 s</option><option value="120">2 min</option></select></div>
+      <div><label class="mini" data-i18n="wfLabels">Callsigns on waterfall</label><select id="sLabels"><option value="1" data-i18n="on">On</option><option value="0" data-i18n="off">Off</option></select></div>
+    </div>
+  </div>
+</div>
+
+<!-- Log -->
+<div class="modal" id="logModal">
+  <div class="sheet">
+    <div class="row"><h2 data-i18n="logT">Log</h2><span class="note" id="logCount"></span><span class="spacer"></span>
+      <button class="btn sm" id="bAdif" data-i18n="exportAdif">Export ADIF</button>
+      <button class="btn sm" id="bAdifCopy" data-i18n="copyAdif">Copy ADIF</button>
+      <button class="btn sm danger" id="bLogClear" data-i18n="clearLog">Clear log</button>
+      <button class="btn" id="bLogClose" data-i18n="done">Done</button></div>
+    <div style="overflow:auto;margin-top:10px"><table class="log"><thead><tr>
+      <th>UTC</th><th data-i18n="call">Call</th><th data-i18n="gridH">Grid</th><th data-i18n="band">Band</th><th>MHz</th><th data-i18n="sent">Sent</th><th data-i18n="rcvdH">Rcvd</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script id="core">
+/* WebFT8 core: FT8 message packing (77 bits), CRC-14, LDPC (174,91) encoder and decoder (belief
+   propagation + ordered-statistics), GFSK synthesis, and a multi-pass decoder with signal subtraction.
+   No DOM, no dependencies. Runs in a page, a Web Worker, or Node.js.
+   The LDPC matrices are the public FT8 code (WSJT-X); table layout as in ft8_lib (MIT, Karlis Goba). */
+(function (root) {
+  'use strict';
+  const TWO_PI = 6.283185307179586;
+  const COSTAS = [3, 1, 4, 0, 6, 5, 2];
+  const GRAY = [0, 1, 3, 2, 5, 6, 4, 7];
+  const NN = 79, ND = 58, NSYNC = 7;
+  const SYM_T = 0.16, TONE_DF = 6.25, SLOT = 15;
+  const FS = 12800, NSPS = 2048;           // internal decoder rate: 2048 samples per symbol
+  const MAX22 = 4194304, NTOKENS = 2063592, MAXGRID4 = 32400;
+
+  const GEN = ['8329ce11bf31eaf509f27fc0','761c264e25c2593354931320','dc265902fb277c6410a1bdc0','1b3f417858cd2dd33ec7f620','09fda4fee04195fd034783a0','077cccc11b8873ed5c3d48a0','29b62afe3ca036f4fe1a9da0','6054faf5f35d96d3b0c8c3e0','e20798e4310eed27884ae900','775c9c08e80e26ddae563180','b0b811028c2bf997213487c0','18a0c9231fc60adf5c5ea320','76471e8302a0721e01b12b80','ffbccb80ca8341fafb47b2e0','66a72a158f9325a2bf671700','c4243689fe85b1c51363a180','0dff739414d1a1b34b1c2700','15b48830636c8b99894972e0','29a89c0d3de81d665489b0e0','4f126f37fa51cbe61bd6b940','99c47239d0d97d3c84e09400','1919b75119765621bb4f1e80','09db12d731faee0b86df6b80','488fc33df43fbdeea4eafb40','827423ee40b675f756eb5fe0','abe197c484cb74757144a9a0','2b500e4bc0ec5a6d2bdbdd00','c474aa53d702187616693600','8eba1a13db3390bd6718cec0','753844673a27782cc42012e0','06ff83a145c37035a5c12680','3b37417858cc2dd33ec3f620','9a4a5a28ee17ca9c324842c0','bc29f465309c977e89610a40','2663ae6ddf8b5ce2bb294880','46f231efe457034c18144180','3fb2ce85abe9b0c72e06fbe0','de87481f282c153971a0a2e0','fcd7ccf23c69fa99bba14120','f0261447e9490ca8e474cec0','4410115818196f95cdd70120','088fc31df4bfbde2a4eafb40','b8fef1b6307729fb0a078c00','5afea7acccb77bbc9d99a900','49a7016ac653f65ecdc90760','1944d085be4e7da8d6cc7d00','251f62adc4032f0ee7140020','56471f8702a0721e00b12b80','2b8e4923f2dd51e2d537fa00','6b550a40a66f4755de95c260','a18ad28d4e27fe92a4f6c840','10c2e586388cb82a3d807580','ef34a41817ee02133db2eb00','7e9c0c54325a9c15836e0000','3693e572d1fde4cdf079e860','bfb2cec5abe1b0c72e07fbe0','7ee18230c583cccc57d4b080','a066cb2fedafc9f526641260','bb23725abc47cc5f4cc4cd20','ded9dba3bee40c59b5609b40','d9a7016ac653e6decdc90360','9ad46aed5f707f280ab5fc40','e5921c77822587316d7d3c20','4f14da8242a8b86dca733520','8b8b507ad467d4441df770e0','22831c9cf1169467ad04b680','213b838fe2ae54c38ee71800','5d926b6dd71f085181a4e120','66ab79d4b29ee6e69509e560','958148682d748a38dd68baa0','b8ce020cf069c32a723ab140','f4331d6d461607e957527460','6da23ba424b9596133cf9c80','a636bcbc7b30c5fbeae67fe0','5cb0d86a07df654a9089a200','f11f106848780fc9ecdd80a0','1fbb5364fb8d2c9d730d5ba0','fcb86bc70a50c9d02a5d0340','a534433029eac15f322e34c0','c989d9c7c3d3b8c55d751300','7bb38b2f0186d46643ae9620','2644ebadeb44b9467d1f42c0','608cc857594bfbb55d696000'];
+  const NM = [[3,30,58,90,91,95,152],[4,31,59,92,114,145],[5,23,60,93,121,150],[6,32,61,94,95,142],[7,24,62,82,92,95,147],[5,31,63,96,125,137],[4,33,64,77,97,106,153],[8,34,65,98,138,145],[9,35,66,99,106,125],[10,36,66,86,100,138,157],[11,37,67,101,104,154],[12,38,68,102,148,161],[7,39,69,81,103,113,144],[13,40,70,87,101,122,155],[14,41,58,105,122,158],[0,32,71,105,106,156],[15,42,72,107,140,159],[16,36,73,80,108,130,153],[10,43,74,109,120,165],[44,54,63,110,129,160,172],[7,45,70,111,118,165],[17,35,75,88,112,113,142],[18,37,76,103,115,162],[19,46,69,91,137,164],[1,47,73,112,127,159],[20,44,77,82,116,120,150],[21,46,57,117,126,163],[15,38,61,111,133,157],[22,42,78,119,130,144],[18,34,58,72,109,124,160],[19,35,62,93,135,160],[13,30,78,97,131,163],[2,43,79,123,126,168],[18,45,80,116,134,166],[6,48,57,89,99,104,167],[11,49,60,117,118,143],[12,50,63,113,117,156],[23,51,75,128,147,148],[24,52,68,89,100,129,155],[19,45,64,79,119,139,169],[20,53,76,99,139,170],[34,81,132,141,170,173],[13,29,82,112,124,169],[3,28,67,119,133,172],[0,3,51,56,85,135,151],[25,50,55,90,121,136,167],[51,83,109,114,144,167],[6,49,80,98,131,172],[22,54,66,94,171,173],[25,40,76,108,140,147],[1,26,40,60,61,114,132],[26,39,55,123,124,125],[17,48,54,123,140,166],[5,32,84,107,115,155],[27,47,69,84,104,128,157],[8,53,62,130,146,154],[21,52,67,108,120,173],[2,12,47,77,94,122],[30,68,132,149,154,168],[11,42,65,88,96,134,158],[4,38,74,101,135,166],[1,53,85,100,134,163],[14,55,86,107,118,170],[9,43,81,90,110,143,148],[22,33,70,93,126,152],[10,48,87,91,141,156],[28,33,86,96,146,161],[29,49,59,85,136,141,161],[9,52,65,83,111,127,164],[21,56,84,92,139,158],[27,31,71,102,131,165],[27,28,83,87,116,142,149],[0,25,44,79,127,146],[16,26,88,102,115,152],[50,56,97,162,164,171],[20,36,72,137,151,168],[15,46,75,129,136,153],[2,23,29,71,103,138],[8,39,89,105,133,150],[14,57,59,73,110,149,162],[17,41,78,143,145,151],[24,37,64,98,121,159],[16,41,74,128,169,171]];
+  const MN = [[15,44,72],[24,50,61],[32,57,77],[0,43,44],[1,6,60],[2,5,53],[3,34,47],[4,12,20],[7,55,78],[8,63,68],[9,18,65],[10,35,59],[11,36,57],[13,31,42],[14,62,79],[16,27,76],[17,73,82],[21,52,80],[22,29,33],[23,30,39],[25,40,75],[26,56,69],[28,48,64],[2,37,77],[4,38,81],[45,49,72],[50,51,73],[54,70,71],[43,66,71],[42,67,77],[0,31,58],[1,5,70],[3,15,53],[6,64,66],[7,29,41],[8,21,30],[9,17,75],[10,22,81],[11,27,60],[12,51,78],[13,49,50],[14,80,82],[16,28,59],[18,32,63],[19,25,72],[20,33,39],[23,26,76],[24,54,57],[34,52,65],[35,47,67],[36,45,74],[37,44,46],[38,56,68],[40,55,61],[19,48,52],[45,51,62],[44,69,74],[26,34,79],[0,14,29],[1,67,79],[2,35,50],[3,27,50],[4,30,55],[5,19,36],[6,39,81],[7,59,68],[8,9,48],[10,43,56],[11,38,58],[12,23,54],[13,20,64],[15,70,77],[16,29,75],[17,24,79],[18,60,82],[21,37,76],[22,40,49],[6,25,57],[28,31,80],[32,39,72],[17,33,47],[12,41,63],[4,25,42],[46,68,71],[53,54,69],[44,61,67],[9,62,66],[13,65,71],[21,59,73],[34,38,78],[0,45,63],[0,23,65],[1,4,69],[2,30,64],[3,48,57],[0,3,4],[5,59,66],[6,31,74],[7,47,81],[8,34,40],[9,38,61],[10,13,60],[11,70,73],[12,22,77],[10,34,54],[14,15,78],[6,8,15],[16,53,62],[17,49,56],[18,29,46],[19,63,79],[20,27,68],[21,24,42],[12,21,36],[1,46,50],[22,53,73],[25,33,71],[26,35,36],[20,35,62],[28,39,43],[18,25,56],[2,45,81],[13,14,57],[32,51,52],[29,42,51],[5,8,51],[26,32,64],[24,68,72],[37,54,82],[19,38,76],[17,28,55],[31,47,70],[41,50,58],[27,43,78],[33,59,61],[30,44,60],[45,67,76],[5,23,75],[7,9,77],[39,40,69],[16,49,52],[41,65,67],[3,21,71],[35,63,80],[12,28,46],[1,7,80],[55,66,72],[4,37,49],[11,37,63],[58,71,79],[2,25,78],[44,75,80],[0,64,73],[6,17,76],[10,55,58],[13,38,53],[15,36,65],[9,27,54],[14,59,69],[16,24,81],[19,29,30],[11,66,67],[22,74,79],[26,31,61],[23,68,74],[18,20,70],[33,52,60],[34,45,46],[32,58,75],[39,42,82],[40,41,62],[48,74,82],[19,43,47],[41,48,56]];
+
+  /* ---------------- LDPC tables ---------------- */
+  const GENB = GEN.map(h => { const r = new Uint8Array(91); for (let j = 0; j < 91; j++) r[j] = (parseInt(h[j >> 2], 16) >> (3 - (j & 3))) & 1; return r; });
+  const GEN_IDX = GENB.map(r => { const a = []; for (let j = 0; j < 91; j++) if (r[j]) a.push(j); return Int16Array.from(a); });
+  // edges: check m has NM[m].length vars; var n has 3 checks
+  const NCHK = 83, NVAR = 174;
+  const CHK_START = new Int32Array(NCHK + 1);
+  for (let m = 0; m < NCHK; m++) CHK_START[m + 1] = CHK_START[m] + NM[m].length;
+  const NEDGE = CHK_START[NCHK];
+  const EDGE_VAR = new Int16Array(NEDGE);
+  for (let m = 0; m < NCHK; m++) NM[m].forEach((n, k) => { EDGE_VAR[CHK_START[m] + k] = n; });
+  const VAR_EDGE = new Int32Array(NVAR * 3);
+  { const cnt = new Uint8Array(NVAR); for (let e = 0; e < NEDGE; e++) { const n = EDGE_VAR[e]; VAR_EDGE[n * 3 + cnt[n]++] = e; } }
+
+  /* ---------------- CRC-14 ---------------- */
+  function crc14(bits, n) { // bits: 0/1 array, MSB first; n bits processed (77 message bits + 5 zero bits = 82)
+    let r = 0;
+    for (let i = 0; i < n; i++) {
+      const b = i < bits.length ? bits[i] : 0;
+      r ^= b << 13;
+      r = (r & 0x2000) ? ((r << 1) ^ 0x2757) : (r << 1);
+    }
+    return r & 0x3fff;
+  }
+  function crcOk(cw) { // cw: >= 91 bits; 77 msg + 14 crc
+    let r = 0;
+    for (let i = 0; i < 82; i++) { const b = i < 77 ? cw[i] : 0; r ^= b << 13; r = (r & 0x2000) ? ((r << 1) ^ 0x2757) : (r << 1); }
+    r &= 0x3fff;
+    let c = 0; for (let i = 77; i < 91; i++) c = (c << 1) | cw[i];
+    return r === c;
+  }
+
+  /* ---------------- LDPC encode ---------------- */
+  function ldpcEncode(a91) {
+    const cw = new Uint8Array(174);
+    cw.set(a91.subarray ? a91.subarray(0, 91) : a91.slice(0, 91));
+    for (let i = 0; i < 83; i++) { let s = 0; const ix = GEN_IDX[i]; for (let k = 0; k < ix.length; k++) s ^= a91[ix[k]]; cw[91 + i] = s; }
+    return cw;
+  }
+  function bits77ToTones(b77) {
+    const a91 = new Uint8Array(91); a91.set(b77);
+    const c = crc14(a91, 82); for (let i = 0; i < 14; i++) a91[77 + i] = (c >> (13 - i)) & 1;
+    const cw = ldpcEncode(a91);
+    const tones = new Uint8Array(NN);
+    for (let i = 0; i < 7; i++) { tones[i] = COSTAS[i]; tones[36 + i] = COSTAS[i]; tones[72 + i] = COSTAS[i]; }
+    for (let d = 0; d < ND; d++) {
+      const v = (cw[3 * d] << 2) | (cw[3 * d + 1] << 1) | cw[3 * d + 2];
+      tones[d < 29 ? 7 + d : 14 + d] = GRAY[v];
+    }
+    return tones;
+  }
+
+  /* ---------------- LDPC decode: belief propagation ---------------- */
+  const bpTov = new Float64Array(NEDGE), bpToc = new Float64Array(NEDGE), bpZn = new Float64Array(NVAR), bpT = new Float64Array(8);
+  function bpDecode(llr, maxIter = 30) {
+    const tov = bpTov, toc = bpToc, zn = bpZn; tov.fill(0);
+    const cw = new Uint8Array(NVAR);
+    let ncLast = 999, ncnt = 0;
+    for (let it = 0; it <= maxIter; it++) {
+      for (let n = 0; n < NVAR; n++) zn[n] = llr[n] + tov[VAR_EDGE[n * 3]] + tov[VAR_EDGE[n * 3 + 1]] + tov[VAR_EDGE[n * 3 + 2]];
+      for (let n = 0; n < NVAR; n++) cw[n] = zn[n] > 0 ? 1 : 0;
+      let ncheck = 0;
+      for (let m = 0; m < NCHK; m++) { let s = 0; for (let e = CHK_START[m]; e < CHK_START[m + 1]; e++) s ^= cw[EDGE_VAR[e]]; ncheck += s; }
+      if (ncheck === 0) {
+        if (crcOk(cw)) { let nh = 0; for (let n = 0; n < NVAR; n++) if (cw[n] !== (llr[n] > 0 ? 1 : 0)) nh++; return { cw, iter: it, nhard: nh }; }
+        return null;
+      }
+      if (it > 0) { const nd = ncheck - ncLast; ncnt = nd < 0 ? 0 : ncnt + 1; if (ncnt >= 5 && it >= 10 && ncheck > 15) return null; }
+      ncLast = ncheck;
+      for (let e = 0; e < NEDGE; e++) toc[e] = zn[EDGE_VAR[e]] - tov[e];
+      for (let m = 0; m < NCHK; m++) {
+        const a = CHK_START[m], b = CHK_START[m + 1], k = b - a;
+        for (let i = 0; i < k; i++) bpT[i] = Math.tanh(-toc[a + i] / 2);
+        for (let i = 0; i < k; i++) {
+          let p = 1; for (let j = 0; j < k; j++) if (j !== i) p *= bpT[j];
+          let x = -p; if (x > 0.999999) x = 0.999999; else if (x < -0.999999) x = -0.999999;
+          tov[a + i] = 2 * Math.atanh(x);
+        }
+      }
+    }
+    return null;
+  }
+
+  /* ---------------- LDPC decode: ordered statistics (OSD) ---------------- */
+  const W = 6; // 32-bit words per 174-bit row
+  const GROWS = (() => { // systematic generator: row k = message bit k
+    const g = [];
+    for (let k = 0; k < 91; k++) {
+      const r = new Uint32Array(W); r[k >> 5] |= 1 << (k & 31);
+      for (let i = 0; i < 83; i++) if (GENB[i][k]) { const c = 91 + i; r[c >> 5] |= 1 << (c & 31); }
+      g.push(r);
+    }
+    return g;
+  })();
+  const getb = (r, c) => (r[c >> 5] >>> (c & 31)) & 1;
+  function rowCrcOk(r) { const cw = new Uint8Array(91); for (let i = 0; i < 91; i++) cw[i] = getb(r, i); return crcOk(cw); }
+  function osdDecode(llr, order2 = 0) {
+    const hard = new Uint32Array(W), rel = new Float64Array(NVAR);
+    for (let n = 0; n < NVAR; n++) { rel[n] = Math.abs(llr[n]); if (llr[n] > 0) hard[n >> 5] |= 1 << (n & 31); }
+    const perm = Array.from({ length: NVAR }, (_, i) => i).sort((a, b) => rel[b] - rel[a]);
+    const M = GROWS.map(r => r.slice());
+    const piv = []; let np = 0;
+    for (let pi = 0; pi < NVAR && np < 91; pi++) {
+      const c = perm[pi], w = c >> 5, bit = 1 << (c & 31);
+      let r = -1; for (let i = np; i < 91; i++) if (M[i][w] & bit) { r = i; break; }
+      if (r < 0) continue;
+      if (r !== np) { const t = M[r]; M[r] = M[np]; M[np] = t; }
+      const P = M[np];
+      for (let i = 0; i < 91; i++) if (i !== np && (M[i][w] & bit)) { const R = M[i]; for (let q = 0; q < W; q++) R[q] ^= P[q]; }
+      piv.push(c); np++;
+    }
+    if (np < 91) return null;
+    const c0 = new Uint32Array(W);
+    for (let k = 0; k < 91; k++) if (getb(hard, piv[k])) for (let q = 0; q < W; q++) c0[q] ^= M[k][q];
+    const cost = cw => { let s = 0; for (let n = 0; n < NVAR; n++) if (((cw[n >> 5] ^ hard[n >> 5]) >>> (n & 31)) & 1) s += rel[n]; return s; };
+    let best = null, bestCost = Infinity, nTest = 0;
+    const tryCw = cw => { nTest++; const cst = cost(cw); if (cst < bestCost && rowCrcOk(cw)) { bestCost = cst; best = cw.slice(); } };
+    tryCw(c0);
+    const t = new Uint32Array(W);
+    for (let k = 0; k < 91; k++) { for (let q = 0; q < W; q++) t[q] = c0[q] ^ M[k][q]; tryCw(t); }
+    if (order2 > 0) { // pairs among the least reliable bits of the most reliable basis
+      const lo = Math.max(0, 91 - order2);
+      for (let a = lo; a < 91; a++) for (let b = a + 1; b < 91; b++) { for (let q = 0; q < W; q++) t[q] = c0[q] ^ M[a][q] ^ M[b][q]; tryCw(t); }
+    }
+    if (!best) return null;
+    const cw = new Uint8Array(NVAR); let nh = 0;
+    for (let n = 0; n < NVAR; n++) { cw[n] = getb(best, n); if (cw[n] !== (llr[n] > 0 ? 1 : 0)) nh++; }
+    return { cw, nhard: nh, dist: bestCost, nTest };
+  }
+
+  /* ---------------- message packing (77 bits) ---------------- */
+  const A37 = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', A36 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', A10 = '0123456789', A27 = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const A38 = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ/', A42 = ' 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ+-./?';
+  const isDigit = c => c >= '0' && c <= '9', isLetter = c => c >= 'A' && c <= 'Z';
+
+  class CallHash { // remembers callsigns so hashed (<...>) fields can be shown in full
+    constructor() { this.h22 = new Map(); this.h12 = new Map(); this.h10 = new Map(); }
+    static hash(call, m) {
+      let n = 0n; const c = (call + '           ').slice(0, 11);
+      for (let i = 0; i < 11; i++) { const j = A38.indexOf(c[i]); if (j < 0) return -1; n = n * 38n + BigInt(j); }
+      return Number(((47055833459n * n) & 0xffffffffffffffffn) >> BigInt(64 - m));
+    }
+    add(call) {
+      call = String(call || '').trim().toUpperCase().replace(/^<|>$/g, '');
+      if (call.length < 3 || call.length > 11 || call === '...') return;
+      const h = CallHash.hash(call, 22); if (h < 0) return;
+      this.h22.set(h, call); this.h12.set(h >> 10, call); this.h10.set(h >> 12, call);
+    }
+    get(bits, h) { const m = bits === 22 ? this.h22 : bits === 12 ? this.h12 : this.h10; return m.get(h); }
+  }
+
+  function packBasecall(c) {
+    const L = c.length; if (L < 3) return -1;
+    let c6 = null;
+    if (c.startsWith('3DA0') && L > 4 && L <= 7) c6 = '3D0' + c.slice(4);
+    else if (c.startsWith('3X') && isLetter(c[2]) && L <= 7) c6 = 'Q' + c.slice(2);
+    else if (isDigit(c[2]) && L <= 6) c6 = c;
+    else if (isDigit(c[1]) && L <= 5) c6 = ' ' + c;
+    if (!c6) return -1;
+    c6 = (c6 + '      ').slice(0, 6);
+    const i0 = A37.indexOf(c6[0]), i1 = A36.indexOf(c6[1]), i2 = A10.indexOf(c6[2]), i3 = A27.indexOf(c6[3]), i4 = A27.indexOf(c6[4]), i5 = A27.indexOf(c6[5]);
+    if (i0 < 0 || i1 < 0 || i2 < 0 || i3 < 0 || i4 < 0 || i5 < 0) return -1;
+    return ((((i0 * 36 + i1) * 10 + i2) * 27 + i3) * 27 + i4) * 27 + i5;
+  }
+  function isStdCall(c) { c = c.replace(/\/[PR]$/, ''); return packBasecall(c) >= 0 && /^[A-Z0-9]+$/.test(c) && /[A-Z]/.test(c) && /\d[A-Z]{0,3}$/.test(c); }
+  function cqMod(s) { // "CQ DX" / "CQ 123" -> value, else -1
+    const m = /^CQ ([A-Z]{1,4}|\d{3})$/.exec(s); if (!m) return -1;
+    if (/^\d{3}$/.test(m[1])) return +m[1];
+    let v = 0; for (const ch of m[1]) v = 27 * v + (ch.charCodeAt(0) - 64);
+    return 1000 + v;
+  }
+  function pack28(tok, hash) { // -> [n28, ip] or null
+    if (tok === 'DE') return [0, 0]; if (tok === 'QRZ') return [1, 0]; if (tok === 'CQ') return [2, 0];
+    if (tok.startsWith('CQ ')) { const v = cqMod(tok); return v < 0 ? null : [3 + v, 0]; }
+    let ip = 0, base = tok;
+    if (/^<.+>$/.test(tok)) { const c = tok.slice(1, -1); const h = CallHash.hash(c, 22); if (h < 0) return null; if (hash) hash.add(c); return [NTOKENS + h, 0]; }
+    if (/\/[PR]$/.test(tok)) { ip = 1; base = tok.slice(0, -2); }
+    const n = isStdCall(base) ? packBasecall(base) : -1;
+    if (n >= 0) { if (hash) hash.add(tok); return [NTOKENS + MAX22 + n, ip]; }
+    return null;
+  }
+  function packGrid(x) { // -> [g15, ir] or null
+    if (x === '' || x == null) return [MAXGRID4 + 1, 0];
+    if (x === 'RRR') return [MAXGRID4 + 2, 0]; if (x === 'RR73') return [MAXGRID4 + 3, 0]; if (x === '73') return [MAXGRID4 + 4, 0];
+    let ir = 0;
+    if (/^R [A-R]{2}\d{2}$/.test(x)) { ir = 1; x = x.slice(2); }
+    if (/^[A-R]{2}\d{2}$/.test(x)) return [(((x.charCodeAt(0) - 65) * 18 + (x.charCodeAt(1) - 65)) * 10 + +x[2]) * 10 + +x[3], ir];
+    const m = /^(R?)([+-]\d{1,2})$/.exec(x);
+    if (m) { let d = +m[2]; if (d < -30 || d > 49) return null; return [MAXGRID4 + 35 + d, m[1] ? 1 : 0]; }
+    return null;
+  }
+  function putBits(b, pos, v, n) { for (let i = n - 1; i >= 0; i--) b[pos++] = (v / 2 ** i) % 2 >= 1 ? 1 : 0; return pos; }
+  function putBig(b, pos, v, n) { for (let i = n - 1; i >= 0; i--) b[pos++] = Number((v >> BigInt(i)) & 1n); return pos; }
+  function getBits(b, pos, n) { let v = 0; for (let i = 0; i < n; i++) v = v * 2 + b[pos + i]; return v; }
+  function getBig(b, pos, n) { let v = 0n; for (let i = 0; i < n; i++) v = (v << 1n) | BigInt(b[pos + i]); return v; }
+
+  function normalize(text) { return String(text).toUpperCase().replace(/\s+/g, ' ').trim(); }
+  function packStd(t1, t2, x, hash) {
+    const a = pack28(t1, hash), b = pack28(t2, hash); if (!a || !b) return null;
+    let i3 = 1;
+    if (/\/P$/.test(t1) || /\/P$/.test(t2)) { if (/\/R$/.test(t1) || /\/R$/.test(t2)) return null; i3 = 2; }
+    const g = packGrid(x); if (!g) return null;
+    if (t1.startsWith('CQ') && g[1]) return null;
+    const bits = new Uint8Array(77); let p = 0;
+    p = putBits(bits, p, a[0], 28); bits[p++] = a[1]; p = putBits(bits, p, b[0], 28); bits[p++] = b[1];
+    bits[p++] = g[1]; p = putBits(bits, p, g[0], 15); putBits(bits, p, i3, 3);
+    return bits;
+  }
+  function packNonstd(t1, t2, x, hash) { // type 4: one hashed call (12 bits) + one plain call up to 11 chars
+    const icq = t1 === 'CQ' ? 1 : 0;
+    if (t1.startsWith('CQ ') && !icq) return null;
+    let nrpt = 0;
+    if (!icq) { if (x === 'RRR') nrpt = 1; else if (x === 'RR73') nrpt = 2; else if (x === '73') nrpt = 3; else if (x) return null; }
+    else if (x) return null;
+    const strip = s => s.replace(/^<|>$/g, '');
+    let iflip = 0, h12 = 0, c58;
+    if (icq) c58 = strip(t2);
+    else {
+      // the call in <brackets> is hashed; otherwise hash the standard one and send the other in full
+      if (/^<.+>$/.test(t2) || (!/^<.+>$/.test(t1) && isStdCall(strip(t2)) && !isStdCall(strip(t1)))) { iflip = 1; c58 = strip(t1); h12 = CallHash.hash(strip(t2), 12); hash && hash.add(strip(t2)); }
+      else { c58 = strip(t2); h12 = CallHash.hash(strip(t1), 12); hash && hash.add(strip(t1)); }
+      if (h12 < 0) return null;
+    }
+    if (c58.length < 3 || c58.length > 11) return null;
+    let n58 = 0n; for (const ch of (c58 + '           ').slice(0, 11)) { const j = A38.indexOf(ch); if (j < 0) return null; n58 = n58 * 38n + BigInt(j); }
+    hash && hash.add(c58);
+    const bits = new Uint8Array(77); let p = 0;
+    p = putBits(bits, p, h12, 12); p = putBig(bits, p, n58, 58); bits[p++] = iflip; p = putBits(bits, p, nrpt, 2); bits[p++] = icq; putBits(bits, p, 4, 3);
+    return bits;
+  }
+  function packFree(text) {
+    if (text.length > 13) return null;
+    let n = 0n; for (const ch of (text + '             ').slice(0, 13)) { const j = A42.indexOf(ch); if (j < 0) return null; n = n * 42n + BigInt(j); }
+    const bits = new Uint8Array(77); putBig(bits, 0, n, 71); // i3 = 0, n3 = 0
+    return bits;
+  }
+  /* pack(text) -> { bits, type } or null. type: 'std' | 'nonstd' | 'free'
+     Rules as WSJT-X: a non-standard call (e.g. PJ4/K1ABC) goes in full in a type-4 message for CQ, a
+     bare answer, RRR, RR73 or 73; with a grid or a report it is sent as a 22-bit hash in a standard message. */
+  function pack(text, hash) {
+    const msg = normalize(text);
+    let toks = msg.split(' ');
+    if (toks[0] === 'CQ' && toks.length >= 3 && toks.length <= 4 && cqMod('CQ ' + toks[1]) >= 0 && !isStdCall(toks[1])) toks = ['CQ ' + toks[1]].concat(toks.slice(2));
+    const isTok = t => t === 'CQ' || t === 'DE' || t === 'QRZ' || t.startsWith('CQ ');
+    const plain = t => !isTok(t) && !/^<.+>$/.test(t) && !isStdCall(t);
+    if (toks.length >= 2 && toks.length <= 4) {
+      let x = toks.slice(2).join(' ');
+      if (toks.length === 4 && !(toks[2] === 'R' && /^[A-R]{2}\d{2}$/.test(toks[3]))) x = null;
+      if (x != null && toks.slice(0, 2).every(t => isTok(t) || /^<?[A-Z0-9/]{3,11}>?$/.test(t)) && !isTok(toks[1])) {
+        const ns = [plain(toks[0]), plain(toks[1])];
+        if (!ns[0] && !ns[1]) { const b = packStd(toks[0], toks[1], x, hash); if (b) return { bits: b, type: 'std' }; }
+        else if (!(ns[0] && ns[1])) {
+          if (toks.length <= 3 && (toks[0] === 'CQ' || ['', 'RRR', 'RR73', '73'].includes(x))) { const b = packNonstd(toks[0], toks[1], x, hash); if (b) return { bits: b, type: 'nonstd' }; }
+          if (toks[0] !== 'CQ' && !toks[0].startsWith('CQ ')) {
+            const t1 = ns[0] ? '<' + toks[0] + '>' : toks[0], t2 = ns[1] ? '<' + toks[1] + '>' : toks[1];
+            const b = packStd(t1, t2, x, hash); if (b) return { bits: b, type: 'std' };
+          }
+        }
+      }
+    }
+    const b = packFree(msg); if (b) return { bits: b, type: 'free' };
+    return null;
+  }
+
+  function unpack28(n, ip, i3, hash) {
+    if (n < NTOKENS) {
+      if (n === 0) return 'DE'; if (n === 1) return 'QRZ'; if (n === 2) return 'CQ';
+      if (n <= 1002) return 'CQ ' + String(n - 3).padStart(3, '0');
+      if (n <= 532443) { let v = n - 1003, s = ''; for (let i = 0; i < 4; i++) { s = A27[v % 27] + s; v = Math.floor(v / 27); } return 'CQ ' + s.trim(); }
+      return null;
+    }
+    n -= NTOKENS;
+    if (n < MAX22) { const c = hash && hash.get(22, n); return c ? '<' + c + '>' : '<...>'; }
+    n -= MAX22;
+    let c = '';
+    c = A27[n % 27] + c; n = Math.floor(n / 27); c = A27[n % 27] + c; n = Math.floor(n / 27); c = A27[n % 27] + c; n = Math.floor(n / 27);
+    c = A10[n % 10] + c; n = Math.floor(n / 10); c = A36[n % 36] + c; n = Math.floor(n / 36);
+    if (n >= 37) return null;
+    c = A37[n] + c;
+    let call;
+    if (c.startsWith('3D0') && c[3] !== ' ') call = '3DA0' + c.slice(3).trim();
+    else if (c[0] === 'Q' && isLetter(c[1])) call = '3X' + c.slice(1).trim();
+    else call = c.trim();
+    if (call.length < 3 || /\s/.test(call)) return null;
+    if (ip) { if (i3 === 1) call += '/R'; else if (i3 === 2) call += '/P'; else return null; }
+    if (hash) hash.add(call);
+    return call;
+  }
+  /* unpack(bits77) -> { text, i3, n3, call1, call2, extra } or null */
+  function unpack(b, hash) {
+    const i3 = getBits(b, 74, 3), n3 = getBits(b, 71, 3);
+    if (i3 === 1 || i3 === 2) {
+      const n1 = getBits(b, 0, 28), ip1 = b[28], n2 = getBits(b, 29, 28), ip2 = b[57], ir = b[58], g = getBits(b, 59, 15);
+      const c1 = unpack28(n1, ip1, i3, hash), c2 = unpack28(n2, ip2, i3, hash);
+      if (!c1 || !c2) return null;
+      if (c2.startsWith('CQ') || c2 === 'DE' || c2 === 'QRZ') return null;
+      let x;
+      if (g <= MAXGRID4) {
+        if (g === MAXGRID4) return null;
+        const v = g; const d3 = v % 10, d2 = Math.floor(v / 10) % 10, l2 = Math.floor(v / 100) % 18, l1 = Math.floor(v / 1800);
+        if (l1 >= 18) return null;
+        x = (ir ? 'R ' : '') + String.fromCharCode(65 + l1, 65 + l2) + d2 + d3;
+      } else {
+        const irpt = g - MAXGRID4;
+        if (irpt === 1) x = ''; else if (irpt === 2) x = 'RRR'; else if (irpt === 3) x = 'RR73'; else if (irpt === 4) x = '73';
+        else { let s = irpt - 35; if (s > 50) s -= 101; x = (ir ? 'R' : '') + (s < 0 ? '-' : '+') + String(Math.abs(s)).padStart(2, '0'); }
+        if (ir && irpt >= 1 && irpt <= 4) return null;
+      }
+      if (c1.startsWith('CQ') && ir) return null;
+      return { text: (c1 + ' ' + c2 + (x ? ' ' + x : '')), i3, n3, call1: c1, call2: c2, extra: x };
+    }
+    if (i3 === 4) {
+      const h12 = getBits(b, 0, 12), n58 = getBig(b, 12, 58), iflip = b[70], nrpt = getBits(b, 71, 2), icq = b[73];
+      let v = n58, s = ''; for (let i = 0; i < 11; i++) { s = A38[Number(v % 38n)] + s; v /= 38n; }
+      const c58 = s.trim(); if (c58.length < 3 || /\s/.test(c58)) return null;
+      if (hash) hash.add(c58);
+      const hc = hash && hash.get(12, h12), c12 = hc ? '<' + hc + '>' : '<...>';
+      let c1, c2, x = '';
+      if (icq) { c1 = 'CQ'; c2 = c58; } else { c1 = iflip ? c58 : c12; c2 = iflip ? c12 : c58; x = ['', 'RRR', 'RR73', '73'][nrpt]; }
+      return { text: c1 + ' ' + c2 + (x ? ' ' + x : ''), i3, n3, call1: c1, call2: c2, extra: x };
+    }
+    if (i3 === 0 && n3 === 0) {
+      let v = getBig(b, 0, 71), s = ''; for (let i = 0; i < 13; i++) { s = A42[Number(v % 42n)] + s; v /= 42n; }
+      if (v !== 0n) return null;
+      const t = s.trim(); if (!t) return null;
+      return { text: t, i3, n3, free: true };
+    }
+    if (i3 === 0 && n3 === 5) { // telemetry: 71 bits as hex
+      let v = getBig(b, 0, 71); const t = v.toString(16).toUpperCase().replace(/^0+/, '') || '0';
+      return { text: t, i3, n3, telemetry: true };
+    }
+    if (i3 === 0 && n3 === 1) { // DXpedition: "K1ABC RR73; W9XYZ <KH1/KH7Z> -08"
+      const c1 = unpack28(getBits(b, 0, 28), 0, 1, hash), c2 = unpack28(getBits(b, 28, 28), 0, 1, hash);
+      const h10 = getBits(b, 56, 10), r5 = getBits(b, 66, 5);
+      if (!c1 || !c2 || c1.startsWith('CQ') || c2.startsWith('CQ')) return null;
+      const hc = hash && hash.get(10, h10), cd = hc ? '<' + hc + '>' : '<...>';
+      const r = 2 * r5 - 30, rs = (r < 0 ? '-' : '+') + String(Math.abs(r)).padStart(2, '0');
+      return { text: `${c1} RR73; ${c2} ${cd} ${rs}`, i3, n3, call1: c2, call2: cd, extra: rs, dxped: c1 };
+    }
+    return null; // contest formats (field day, RTTY roundup, EU VHF) are not shown
+  }
+  function textToTones(text, hash) { const p = pack(text, hash); return p ? bits77ToTones(p.bits) : null; }
+
+  /* ---------------- GFSK synthesis (as WSJT-X: BT = 2, h = 1, raised-cosine ramps) ---------------- */
+  function erf(x) { // Abramowitz & Stegun 7.1.26, |err| < 1.5e-7
+    const s = x < 0 ? -1 : 1; x = Math.abs(x);
+    const t = 1 / (1 + 0.3275911 * x);
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return s * y;
+  }
+  const pulseCache = new Map();
+  function gfskPulse(nsps) {
+    if (pulseCache.has(nsps)) return pulseCache.get(nsps);
+    const p = new Float64Array(3 * nsps), c = Math.PI * Math.sqrt(2 / Math.LN2), bt = 2;
+    for (let i = 0; i < 3 * nsps; i++) { const tt = (i - 1.5 * nsps) / nsps; p[i] = 0.5 * (erf(c * bt * (tt + 0.5)) - erf(c * bt * (tt - 0.5))); }
+    pulseCache.set(nsps, p); return p;
+  }
+  /* phase increments per sample (rad), length nsym*nsps, for tones (without the carrier term) */
+  function gfskDphi(tones, nsps) {
+    const nsym = tones.length, p = gfskPulse(nsps), pk = TWO_PI / nsps;
+    const d = new Float64Array((nsym + 2) * nsps);
+    for (let j = 0; j < nsym; j++) { const ib = j * nsps, a = pk * tones[j]; for (let i = 0; i < 3 * nsps; i++) d[ib + i] += a * p[i]; }
+    for (let i = 0; i < 2 * nsps; i++) { d[i] += pk * tones[0] * p[nsps + i]; d[nsym * nsps + i] += pk * tones[nsym - 1] * p[i]; }
+    return d.subarray(nsps, nsps + nsym * nsps);
+  }
+  /* synth(tones, {sampleRate, f0, amplitude, out, offset, phase}) -> Float32Array (real waveform, ramps included) */
+  function synth(tones, o) {
+    const fs = o.sampleRate, nsps = Math.round(SYM_T * fs), n = tones.length * nsps;
+    const out = o.out || new Float32Array(n), off = o.offset | 0, amp = o.amplitude ?? 1;
+    const d = gfskDphi(tones, nsps), w0 = TWO_PI * o.f0 / fs, nr = Math.round(nsps / 8);
+    const fade = o.fade; // optional function(sampleIndex) -> gain
+    let ph = o.phase || 0;
+    for (let i = 0; i < n; i++) {
+      const k = off + i;
+      if (k >= 0 && k < out.length) {
+        let a = amp;
+        if (i < nr) a *= (1 - Math.cos(Math.PI * i / nr)) / 2; else if (i >= n - nr) a *= (1 - Math.cos(Math.PI * (n - i) / nr)) / 2;
+        if (fade) a *= fade(i);
+        out[k] += a * Math.sin(ph);
+      }
+      ph += d[i] + w0; if (ph > TWO_PI) ph -= TWO_PI;
+    }
+    return out;
+  }
+
+  /* ---------------- FFT (radix-2, in place) ---------------- */
+  const fftCache = new Map();
+  function fftPlan(n) {
+    if (fftCache.has(n)) return fftCache.get(n);
+    const rev = new Uint32Array(n), bits = Math.log2(n) | 0;
+    for (let i = 0; i < n; i++) { let r = 0, x = i; for (let b = 0; b < bits; b++) { r = (r << 1) | (x & 1); x >>= 1; } rev[i] = r; }
+    const cs = new Float64Array(n / 2), sn = new Float64Array(n / 2);
+    for (let i = 0; i < n / 2; i++) { cs[i] = Math.cos(TWO_PI * i / n); sn[i] = -Math.sin(TWO_PI * i / n); }
+    const p = { n, rev, cs, sn }; fftCache.set(n, p); return p;
+  }
+  function fft(re, im, inverse) { // forward: X[k] = sum x[n] e^{-j2πkn/N}; inverse without 1/N scaling
+    const n = re.length, { rev, cs, sn } = fftPlan(n);
+    for (let i = 0; i < n; i++) { const j = rev[i]; if (j > i) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    const sg = inverse ? -1 : 1;
+    for (let size = 2; size <= n; size <<= 1) {
+      const half = size >> 1, step = n / size;
+      for (let i = 0; i < n; i += size) {
+        for (let j = 0, k = 0; j < half; j++, k += step) {
+          const wr = cs[k], wi = sg * sn[k], a = i + j, b = a + half;
+          const tr = re[b] * wr - im[b] * wi, ti = re[b] * wi + im[b] * wr;
+          re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+        }
+      }
+    }
+  }
+
+  /* ---------------- resampler (windowed sinc) ---------------- */
+  function resample(x, fsIn, fsOut) {
+    if (fsIn === fsOut) return Float32Array.from(x);
+    const ratio = fsIn / fsOut, nOut = Math.floor(x.length / ratio), y = new Float32Array(nOut);
+    const fc = 0.45 * Math.min(1, 1 / ratio) * 2; // normalized to input Nyquist... cutoff = 0.45*fsOut
+    const K = 16 * Math.max(1, Math.ceil(ratio)), PH = 512;
+    const tab = new Float32Array((2 * K + 1) * PH + 1);
+    for (let i = 0; i < tab.length; i++) {
+      const t = i / PH - K; const s = t === 0 ? 1 : Math.sin(Math.PI * fc * t) / (Math.PI * fc * t);
+      const w = 0.42 + 0.5 * Math.cos(Math.PI * t / K) + 0.08 * Math.cos(2 * Math.PI * t / K);
+      tab[i] = Math.abs(t) <= K ? s * w * fc : 0;
+    }
+    for (let n = 0; n < nOut; n++) {
+      const p = n * ratio, i0 = Math.floor(p), fr = p - i0;
+      let s = 0;
+      for (let k = -K + 1; k <= K; k++) {
+        const idx = i0 + k; if (idx < 0 || idx >= x.length) continue;
+        const t = k - fr; const ti = (t + K) * PH, a = ti | 0;
+        s += x[idx] * (tab[a] + (tab[a + 1] - tab[a]) * (ti - a));
+      }
+      y[n] = s;
+    }
+    return y;
+  }
+
+  /* ---------------- decoder ---------------- */
+  const NFFT1 = 4096, NSTEP = 512, NHSYM_MAX = Math.floor(SLOT * FS / NSTEP);
+  const NBIG = 262144, NDOWN = 4096, DS = NBIG / NDOWN, FS2 = FS / DS, NSPS2 = NSPS / DS; // 200 Hz, 32 samples/symbol
+  const KDF = 14, DFSTEP = 0.25; // fine frequency grid: -3.5 .. +3.5 Hz in 0.25 Hz steps
+  const ROT = (() => { const a = []; for (let k = -KDF; k <= KDF; k++) { const w = TWO_PI * k * DFSTEP / FS2, r = new Float64Array(NDOWN), i = new Float64Array(NDOWN); for (let n = 0; n < NDOWN; n++) { r[n] = Math.cos(-w * n); i[n] = Math.sin(-w * n); } a.push([r, i]); } return a; })();
+  const rotOf = dfr => ROT[Math.max(0, Math.min(2 * KDF, Math.round(dfr / DFSTEP) + KDF))];
+  const SINLUT = (() => { const t = new Float64Array(4097); for (let i = 0; i <= 4096; i++) t[i] = Math.sin(TWO_PI * i / 4096); return t; })();
+  const fsin = ph => { let u = ph / TWO_PI; u -= Math.floor(u); const v = u * 4096, i = v | 0; return SINLUT[i] + (SINLUT[i + 1] - SINLUT[i]) * (v - i); };
+  const fcos = ph => fsin(ph + 1.5707963267948966);
+  const CSYNC = (() => { const a = []; for (let t = 0; t < 8; t++) { const r = new Float64Array(NSPS2), i = new Float64Array(NSPS2); for (let k = 0; k < NSPS2; k++) { r[k] = Math.cos(TWO_PI * t * k / NSPS2); i[k] = Math.sin(TWO_PI * t * k / NSPS2); } a.push([r, i]); } return a; })();
+
+  function spectrogram(x) {
+    const nh = Math.min(NHSYM_MAX, Math.floor((x.length - NSPS) / NSTEP) + 1), nb = NFFT1 / 2;
+    const s = new Float32Array(nh * nb), re = new Float64Array(NFFT1), im = new Float64Array(NFFT1);
+    for (let j = 0; j < nh; j += 2) { // two real frames in one complex FFT
+      re.fill(0); im.fill(0);
+      const a = j * NSTEP, b = (j + 1) * NSTEP, two = j + 1 < nh;
+      for (let k = 0; k < NSPS; k++) { re[k] = x[a + k] || 0; if (two) im[k] = x[b + k] || 0; }
+      fft(re, im, false);
+      for (let i = 0; i < nb; i++) {
+        const i2 = (NFFT1 - i) % NFFT1;
+        const ar = (re[i] + re[i2]) / 2, ai = (im[i] - im[i2]) / 2, br = (im[i] + im[i2]) / 2, bi = (re[i2] - re[i]) / 2;
+        s[j * nb + i] = ar * ar + ai * ai;
+        if (two) s[(j + 1) * nb + i] = br * br + bi * bi;
+      }
+    }
+    return { s, nh, nb };
+  }
+  /* noise power per spectrogram bin (mean), from a low percentile over time, smoothed in frequency */
+  function noiseBase(sp) {
+    const { s, nh, nb } = sp, q = new Float64Array(nb), col = new Float32Array(nh);
+    for (let i = 0; i < nb; i++) { for (let m = 0; m < nh; m++) col[m] = s[m * nb + i]; col.sort(); q[i] = col[Math.floor(0.2 * nh)] / 0.223; }
+    const out = new Float64Array(nb), w = 100, tmp = [];
+    for (let i = 0; i < nb; i++) { tmp.length = 0; for (let k = Math.max(0, i - w); k <= Math.min(nb - 1, i + w); k++) tmp.push(q[k]); tmp.sort((a, b) => a - b); out[i] = tmp[Math.floor(tmp.length * 0.3)]; }
+    return out;
+  }
+  function findCandidates(sp, fmin, fmax, maxCand, syncMin) {
+    const { s, nh, nb } = sp, df = FS / NFFT1, ia = Math.max(1, Math.round(fmin / df)), ib = Math.min(nb - 16, Math.round(fmax / df));
+    const JZ = 62, J0 = Math.round(0.5 * FS / NSTEP); // lags in quarter symbols; 0.5 s nominal start
+    const nf = ib - ia + 1, red = new Float64Array(nf), jpk = new Int32Array(nf), red2 = new Float64Array(nf), jpk2 = new Int32Array(nf);
+    // P[m][i] = power summed over the 7 tone bins i, i+2, ... i+12 (for the noise reference)
+    const P = new Float32Array(nh * nb);
+    for (let m = 0; m < nh; m++) for (let i = ia; i <= ib; i++) { let a = 0; for (let k = 0; k < 7; k++) a += s[m * nb + i + 2 * k]; P[m * nb + i] = a; }
+    for (let i = ia; i <= ib; i++) {
+      let best = -1, bj = 0, best2 = -1, bj2 = 0;
+      for (let j = -JZ; j <= JZ; j++) {
+        let ta = 0, tb = 0, tc = 0, t0a = 0, t0b = 0, t0c = 0;
+        for (let n = 0; n < 7; n++) {
+          const m = j + J0 + 4 * n, ic = i + 2 * COSTAS[n];
+          if (m >= 0 && m < nh) { ta += s[m * nb + ic]; t0a += P[m * nb + i]; }
+          const mb = m + 144; if (mb >= 0 && mb < nh) { tb += s[mb * nb + ic]; t0b += P[mb * nb + i]; }
+          const mc = m + 288; if (mc >= 0 && mc < nh) { tc += s[mc * nb + ic]; t0c += P[mc * nb + i]; }
+        }
+        const t = ta + tb + tc, t0 = (t0a + t0b + t0c - t) / 6;
+        const sabc = t0 > 0 ? t / t0 : 0;
+        const tbc = tb + tc, t0bc = (t0b + t0c - tbc) / 6, sbc = t0bc > 0 ? tbc / t0bc : 0;
+        const v = Math.max(sabc, sbc);
+        if (v > best) { best = v; bj = j; }
+        if (Math.abs(j) <= 10 && v > best2) { best2 = v; bj2 = j; }
+      }
+      red[i - ia] = best; jpk[i - ia] = bj; red2[i - ia] = best2; jpk2[i - ia] = bj2;
+    }
+    const base = a => { const t = Array.from(a).sort((x, y) => x - y); return t[Math.floor(0.4 * t.length)] || 1; };
+    const b1 = base(red), b2 = base(red2);
+    const cands = [];
+    for (let k = 0; k < nf; k++) {
+      const f = (ia + k) * df;
+      const v1 = red[k] / b1, v2 = red2[k] / b2;
+      if (v1 >= syncMin) cands.push({ f, sync: v1, t: (jpk[k] + J0) * NSTEP / FS });
+      if (v2 >= syncMin && jpk2[k] !== jpk[k]) cands.push({ f, sync: v2, t: (jpk2[k] + J0) * NSTEP / FS });
+    }
+    cands.sort((a, b) => b.sync - a.sync);
+    const out = [];
+    for (const c of cands) {
+      if (out.some(o => Math.abs(o.f - c.f) < 4 && Math.abs(o.t - c.t) < 0.04)) continue;
+      out.push(c); if (out.length >= maxCand) break;
+    }
+    return { cands: out, base: b1 };
+  }
+
+  class Ft8Decoder {
+    constructor() { this.hash = new CallHash(); }
+    /* x: Float32Array at 12800 Hz, sample 0 = start of the 15 s slot.
+       opts: {fmin, fmax, depth: 1|2|3, maxCand, timeBudgetMs}
+       returns [{freq, dt, snr, text, msg, tones, sync, pass, osd}] */
+    decode(xIn, opts = {}) {
+      const fmin = opts.fmin ?? 200, fmax = opts.fmax ?? 3000, depth = opts.depth ?? 3;
+      const t0 = Date.now(), budget = opts.timeBudgetMs ?? 4000;
+      const x = new Float32Array(SLOT * FS); x.set(xIn.subarray(0, Math.min(xIn.length, x.length)));
+      const results = [], seen = new Set();
+      this.apList = buildAp(opts.ap);
+      const npass = depth >= 3 ? 3 : depth;
+      for (let pass = 1; pass <= npass; pass++) {
+        const sp = spectrogram(x);
+        if (pass === 1) this.nbase = noiseBase(sp);
+        this.sp = sp;
+        const { cands } = findCandidates(sp, fmin, fmax, opts.maxCand ?? (depth >= 2 ? 300 : 120), pass === 1 ? 1.6 : 1.4);
+        // full-slot spectrum for down-conversion
+        const re = new Float64Array(NBIG), im = new Float64Array(NBIG);
+        for (let i = 0; i < x.length; i++) re[i] = x[i];
+        fft(re, im, false);
+        const found = [];
+        for (const c of cands) {
+          if (Date.now() - t0 > budget) break;
+          if (results.some(r => Math.abs(r.freq - c.f) < 3 && Math.abs(r.dt + 0.5 - c.t) < 0.08)) continue;
+          const r = this.decodeCand(re, im, c, depth, pass);
+          if (!r) continue;
+          const key = r.bits.join('');
+          if (seen.has(key)) continue;
+          seen.add(key); r.pass = pass; results.push(r); found.push(r);
+        }
+        if (!found.length || pass === npass || Date.now() - t0 > budget) break;
+        for (const r of found) subtract(x, r.tones, r.freq, r.dt);
+      }
+      // second chance for hashed calls now that the table has more entries
+      for (const r of results) if (r.text.includes('<...>')) { const u = unpack(r.bits, this.hash); if (u) { r.text = u.text; r.msg = u; } }
+      results.sort((a, b) => a.freq - b.freq);
+      return results;
+    }
+    decodeCand(RE, IM, c, depth, pass) {
+      // 1. down-convert: f0 (tone 0) -> DC, 200 Hz complex
+      const cd = downsample(RE, IM, c.f);
+      // 2. fine time / frequency sync on the Costas arrays
+      let i0 = Math.round((c.t) * FS2), best = -1, ibest = i0, fbest = 0;
+      for (let i = i0 - 10; i <= i0 + 10; i++) { const v = sync8d(cd, i, 0); if (v > best) { best = v; ibest = i; } }
+      best = -1;
+      for (let k = -12; k <= 12; k++) { const df = k * DFSTEP, v = sync8d(cd, ibest, df); if (v > best) { best = v; fbest = df; } }
+      best = -1; let i2 = ibest;
+      for (let i = ibest - 4; i <= ibest + 4; i++) { const v = sync8d(cd, i, fbest); if (v > best) { best = v; i2 = i; } }
+      ibest = i2;
+      // sub-sample refinement (parabolic) for time and frequency, used for subtraction
+      const ym = sync8d(cd, ibest - 1, fbest), y0 = best, yp = sync8d(cd, ibest + 1, fbest);
+      const dti = (ym - yp) / (2 * (ym - 2 * y0 + yp) || 1e-30);
+      const fm = sync8d(cd, ibest, fbest - 0.25), fp = sync8d(cd, ibest, fbest + 0.25);
+      const dfi = (fm - fp) / (2 * (fm - 2 * y0 + fp) || 1e-30);
+      // 3. symbol spectra
+      const cs = symbolSpectra(cd, ibest, fbest);
+      const s8 = new Float64Array(8 * NN);
+      for (let k = 0; k < NN; k++) for (let t = 0; t < 8; t++) { const a = cs.re[k * 8 + t], b = cs.im[k * 8 + t]; s8[k * 8 + t] = Math.sqrt(a * a + b * b); }
+      let nsync = 0;
+      for (let k = 0; k < 7; k++) for (const o of [0, 36, 72]) {
+        let mx = 0, am = 0; for (let t = 0; t < 8; t++) if (s8[(o + k) * 8 + t] > mx) { mx = s8[(o + k) * 8 + t]; am = t; }
+        if (am === COSTAS[k]) nsync++;
+      }
+      if (nsync <= 6) return null;
+      // 4. bit metrics, 1/2/3-symbol coherent combining
+      const metrics = [1, 2, 3].map(ns => bitMetrics(cs, ns));
+      let dec = null, usedOsd = false;
+      for (const llr of metrics) { dec = bpDecode(llr); if (dec) break; }
+      if (!dec && depth >= 2 && nsync >= 9 && c.sync >= 1.8) {
+        for (const llr of (depth >= 3 ? [metrics[0], metrics[2]] : [metrics[0]])) {
+          const o = osdDecode(llr, depth >= 3 ? 12 : 0);
+          if (o && o.nhard <= 40 && o.dist <= 32) { dec = o; usedOsd = true; break; }
+        }
+      }
+      let ap = '';
+      if (!dec && this.apList && nsync >= 8) {
+        for (const a of this.apList) {
+          for (const base of [metrics[0], metrics[2]]) {
+            const llr = base.slice(); let mx = 0; for (let i = 0; i < 174; i++) mx = Math.max(mx, Math.abs(llr[i]));
+            for (let i = 0; i < a.bits.length; i++) if (a.mask[i]) llr[i] = (a.bits[i] ? 1 : -1) * mx * 1.01;
+            dec = bpDecode(llr);
+            if (!dec && depth >= 3 && a.osd) { const o = osdDecode(llr, 0); if (o && o.nhard <= 30 && o.dist <= 24) dec = o; }
+            if (dec) { ap = a.name; break; }
+          }
+          if (dec) break;
+        }
+      }
+      if (!dec) return null;
+      const bits = dec.cw.slice(0, 77);
+      if (bits.every(v => v === 0)) return null;
+      const msg = unpack(bits, this.hash);
+      if (!msg) return null;
+      if ((usedOsd || ap) && (msg.free || msg.telemetry || /<\.\.\.>/.test(msg.text))) return null;
+      const tones = bits77ToTones(bits);
+      // 5. SNR in 2500 Hz: decoded-tone power in the spectrogram vs the noise floor at that frequency
+      const freq0 = c.f + fbest, dt0 = ibest / FS2 - 0.5;
+      const snr = this.snrOf(tones, freq0, dt0);
+      const freq = c.f + fbest + Math.max(-0.25, Math.min(0.25, dfi * 0.25));
+      const dt = (ibest + Math.max(-1, Math.min(1, dti))) / FS2 - 0.5;
+      return { freq, dt, snr, text: msg.text, msg, tones, bits, sync: c.sync, nsync, osd: usedOsd, ap, nhard: dec.nhard };
+    }
+  }
+  /* a-priori patterns: known leading bits of messages we expect (as WSJT-X "AP" decoding).
+     cfg: {cq: bool, mycall, dxcall} */
+  function buildAp(cfg) {
+    if (!cfg) return null;
+    const list = [], mk = (name, toks, osd) => {
+      const bits = new Uint8Array(77), mask = new Uint8Array(77); let p = 0;
+      for (const t of toks) { const v = pack28(t, null); if (!v) return; p = putBits(bits, p, v[0], 28); bits[p++] = v[1]; }
+      for (let i = 0; i < p; i++) mask[i] = 1;
+      mask[74] = mask[75] = mask[76] = 1; bits[74] = 0; bits[75] = 0; bits[76] = 1; // i3 = 1
+      list.push({ name, bits, mask, osd });
+    };
+    const my = cfg.mycall && String(cfg.mycall).toUpperCase(), dx = cfg.dxcall && String(cfg.dxcall).toUpperCase();
+    if (my && dx) mk('a3', [my, dx], true);
+    if (my) mk('a2', [my], true);
+    if (cfg.cq) mk('a1', ['CQ'], false);
+    return list.length ? list : null;
+  }
+  Ft8Decoder.prototype.snrOf = function (tones, f0, dt) {
+    const { s, nh, nb } = this.sp, df = FS / NFFT1, m0 = Math.round((0.5 + dt) * FS / NSTEP);
+    let ps = 0, pn = 0, n = 0;
+    for (let k = 0; k < NN; k++) {
+      const m = m0 + 4 * k; if (m < 0 || m >= nh) continue;
+      const i = Math.round((f0 + tones[k] * TONE_DF) / df); if (i < 0 || i >= nb) continue;
+      ps += s[m * nb + i]; pn += this.nbase[i]; n++;
+    }
+    if (!n || pn <= 0) return -24;
+    const r = ps / pn - 1;
+    return Math.max(-24, Math.min(40, Math.round(10 * Math.log10(Math.max(r, 1e-3)) - 26)));
+  };
+  function downsample(RE, IM, f0) {
+    const df = FS / NBIG, ft = f0 + 8.5 * TONE_DF, fb = f0 - 1.5 * TONE_DF;
+    const i0 = Math.round(f0 / df), it = Math.min(Math.round(ft / df), NBIG / 2), ibb = Math.max(1, Math.round(fb / df));
+    const re = new Float64Array(NDOWN), im = new Float64Array(NDOWN);
+    const nTap = 101, len = it - ibb + 1;
+    for (let i = ibb; i <= it; i++) {
+      const k = i - ibb; let w = 1;
+      if (k < nTap) w = 0.5 * (1 - Math.cos(Math.PI * k / (nTap - 1))); else if (k > len - 1 - nTap) w = 0.5 * (1 - Math.cos(Math.PI * (len - 1 - k) / (nTap - 1)));
+      const j = ((i - i0) % NDOWN + NDOWN) % NDOWN;
+      re[j] = RE[i] * w; im[j] = IM[i] * w;
+    }
+    fft(re, im, true);
+    const sc = 1 / Math.sqrt(NBIG * NDOWN) * 64;
+    for (let i = 0; i < NDOWN; i++) { re[i] *= sc; im[i] *= sc; }
+    return { re, im };
+  }
+  function sync8d(cd, i0, dfr) {
+    let sync = 0; const { re, im } = cd, [pr, pi] = rotOf(dfr);
+    for (let blk = 0; blk < 3; blk++) for (let n = 0; n < 7; n++) {
+      const a = i0 + (blk * 36 + n) * NSPS2; if (a < 0 || a + NSPS2 > NDOWN) continue;
+      const [cr, ci] = CSYNC[COSTAS[n]];
+      let zr = 0, zi = 0;
+      for (let k = 0; k < NSPS2; k++) {
+        const j = a + k, xr = re[j] * pr[j] - im[j] * pi[j], xi = re[j] * pi[j] + im[j] * pr[j];
+        zr += xr * cr[k] + xi * ci[k]; zi += xi * cr[k] - xr * ci[k];
+      }
+      sync += zr * zr + zi * zi;
+    }
+    return sync;
+  }
+  function symbolSpectra(cd, i0, dfr) {
+    const out = { re: new Float64Array(NN * 8), im: new Float64Array(NN * 8) }, [pr, pi] = rotOf(dfr);
+    const xr = new Float64Array(NSPS2), xi = new Float64Array(NSPS2);
+    for (let k = 0; k < NN; k++) {
+      const a = i0 + k * NSPS2;
+      for (let j = 0; j < NSPS2; j++) {
+        const idx = a + j; if (idx < 0 || idx >= NDOWN) { xr[j] = 0; xi[j] = 0; continue; }
+        xr[j] = cd.re[idx] * pr[idx] - cd.im[idx] * pi[idx]; xi[j] = cd.re[idx] * pi[idx] + cd.im[idx] * pr[idx];
+      }
+      for (let t = 0; t < 8; t++) {
+        const [cr, ci] = CSYNC[t]; let zr = 0, zi = 0;
+        for (let j = 0; j < NSPS2; j++) { zr += xr[j] * cr[j] + xi[j] * ci[j]; zi += xi[j] * cr[j] - xr[j] * ci[j]; }
+        out.re[k * 8 + t] = zr; out.im[k * 8 + t] = zi;
+      }
+    }
+    return out;
+  }
+  function bitMetrics(cs, nsym) {
+    const llr = new Float64Array(174);
+    for (const [s0, d0] of [[7, 0], [43, 29]]) {
+      for (let ks = 0; ks < 29; ks += nsym) {
+        const ns = Math.min(nsym, 29 - ks), nt = 1 << (3 * ns), nb = 3 * ns;
+        const s2 = new Float64Array(nt);
+        for (let i = 0; i < nt; i++) {
+          let zr = 0, zi = 0;
+          for (let m = 0; m < ns; m++) {
+            const v = (i >> (3 * (ns - 1 - m))) & 7, t = GRAY[v], k = s0 + ks + m;
+            zr += cs.re[k * 8 + t]; zi += cs.im[k * 8 + t];
+          }
+          s2[i] = Math.sqrt(zr * zr + zi * zi);
+        }
+        for (let ib = 0; ib < nb; ib++) {
+          let m1 = -1e30, m0 = -1e30; const bit = nb - 1 - ib;
+          for (let i = 0; i < nt; i++) { if ((i >> bit) & 1) { if (s2[i] > m1) m1 = s2[i]; } else if (s2[i] > m0) m0 = s2[i]; }
+          llr[3 * (d0 + ks) + ib] = m1 - m0;
+        }
+      }
+    }
+    let s = 0, s2 = 0; for (let i = 0; i < 174; i++) { s += llr[i]; s2 += llr[i] * llr[i]; }
+    const sd = Math.sqrt(Math.max(1e-30, s2 / 174 - (s / 174) ** 2));
+    for (let i = 0; i < 174; i++) llr[i] = 2.83 * llr[i] / sd;
+    return llr;
+  }
+  /* subtract a decoded signal from x (12800 Hz) */
+  function subtract(x, tones, f0, dt) {
+    const n0 = Math.round((0.5 + dt) * FS), N = NN * NSPS;
+    const d = gfskDphi(tones, NSPS), w0 = TWO_PI * f0 / FS;
+    const rr = new Float64Array(N), ri = new Float64Array(N), zr = new Float64Array(N), zi = new Float64Array(N), msk = new Float64Array(N);
+    let ph = 0;
+    for (let i = 0; i < N; i++) {
+      rr[i] = fcos(ph); ri[i] = fsin(ph);
+      const k = n0 + i;
+      if (k >= 0 && k < x.length) { zr[i] = x[k] * rr[i]; zi[i] = -x[k] * ri[i]; msk[i] = 1; }
+      ph += d[i] + w0;
+    }
+    const L = 2048, box = a => { const o = new Float64Array(N); let s = 0; for (let i = 0; i < N + L / 2; i++) { if (i < N) s += a[i]; if (i - L >= 0) s -= a[i - L]; const j = i - L / 2; if (j >= 0 && j < N) o[j] = s; } return o; };
+    const ar = box(box(zr)), ai = box(box(zi)), am = box(box(msk));
+    for (let i = 0; i < N; i++) {
+      const k = n0 + i; if (k < 0 || k >= x.length || am[i] <= 0) continue;
+      const cr = 2 * ar[i] / am[i], ci = 2 * ai[i] / am[i];
+      x[k] -= cr * rr[i] - ci * ri[i];
+    }
+  }
+
+  /* convenience: decode a slot recorded at any rate */
+  function decodeSlot(samples, sampleRate, opts, decoder) {
+    const x = resample(samples, sampleRate, FS);
+    return (decoder || new Ft8Decoder()).decode(x, opts);
+  }
+
+  const api = { pack, unpack, textToTones, bits77ToTones, synth, resample, Ft8Decoder, CallHash, decodeSlot, crc14, ldpcEncode, bpDecode, osdDecode,
+    normalize, isStdCall, COSTAS, GRAY, FS, NN, SYM_T, TONE_DF, SLOT, fft, _subtract: subtract };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.FT8 = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ================= i18n ================= */
+const STR = {
+  en: {
+    install: 'Install app', start: '▶ Start sound card', stopCard: '■ Stop sound card', demo: 'Demo', openWav: 'Open WAV', log: 'Log',
+    wfHint: 'click: RX freq · Shift+click / right-click: TX freq', rxHz: 'RX Hz', txHz: 'TX Hz', tx2rxTip: 'Set RX frequency = TX frequency', rx2txTip: 'Set TX frequency = RX frequency',
+    parTip: 'Transmit in the 1st (00/30 s) or 2nd (15/45 s) period', autoTip: 'Answer automatically with the next message of the QSO',
+    txEnable: 'Enable TX', txEnabled: 'TX enabled', halt: 'Halt TX', tune: 'Tune', tuning: 'Tuning…',
+    activity: 'Band activity', rxfreq: 'RX frequency & my QSOs', cqOnly: 'CQ only', clear: 'Clear', decodes: n => `${n} decodes`,
+    readyTitle: 'Ready for FT8', readyText: "Connect your rig's audio, set your call and grid in Settings, and press Start sound card. Or try the demo: a simulated band where stations call CQ and answer you.",
+    runDemo: 'Run demo', dxCall: 'DX CALL', dxGrid: 'GRID', rptSent: 'Report sent', rptRcvd: 'Report received', dialTip: 'Dial frequency in MHz (for the log)', logQso: 'Log (F9)',
+    settingsT: 'Settings', done: 'Done', station: 'Station', myCall: 'My call', myGrid: 'My grid (4 or 6)', language: 'Language',
+    depth: 'Decode depth', fast: 'Fast', normal: 'Normal', deep: 'Deep', apDec: 'A-priori decoding (AP)', on: 'On', off: 'Off',
+    cqMod: 'CQ modifier (DX, NA, EU, TEST…)', rr73: 'Final message', after73: 'After 73', disableTx: 'Disable TX', callCq: 'Go back to CQ',
+    autoLog: 'Log QSO', automatic: 'Automatically', manual: 'Manually (F9)', watchdog: 'TX watchdog (minutes)', decodeAt: 'Decode at (s into slot)',
+    clockT: 'Clock', clockOff: 'Clock correction (ms)', syncClk: 'Correct from decodes (DT)', zeroClk: 'Reset to system clock',
+    clockNote: 'FT8 needs your clock within about ±1 s of UTC. Best: sync your computer\'s clock (NTP). If the DT of most stations is far from 0, use "Correct from decodes".',
+    audio: 'Audio', inDev: 'Input (from rig)', outDev: 'Output (to rig)', inGain: 'Input gain', txLvl: 'TX audio level', monitor: 'Monitor RX audio',
+    alcNote: 'Set the TX level so the ALC does not move. FT8 is constant-envelope; overdriving makes splatter that blocks other stations.',
+    pttMethod: 'PTT method', choosePort: 'Choose serial port…', pttLead: 'PTT lead (ms)', portNote: 'Serial PTT uses Web Serial (Chrome / Edge). Both RTS and DTR are released as soon as the port opens.',
+    display: 'Display', wfRange: 'Waterfall range', wfSpan: 'Waterfall height shows', wfLabels: 'Callsigns on waterfall',
+    logT: 'Log', exportAdif: 'Export ADIF', copyAdif: 'Copy ADIF', clearLog: 'Clear log', confirmClear: 'Click again to confirm', call: 'Call', gridH: 'Grid', band: 'Band', sent: 'Sent', rcvdH: 'Rcvd',
+    idle: 'IDLE', new: 'NEW', dupeB: 'WORKED', qsos: n => `${n} QSO${n === 1 ? '' : 's'}`, dtTip: 'Median time offset of decoded stations. Far from 0 = your clock is off.',
+    settingsTip: 'Settings',
+    tDemo: 'Demo: a simulated band. Click a CQ (green) to call it, or press Tx6 + Enable TX to call CQ — someone will answer.',
+    tNoMic: 'Sound card access was refused: ', tNoMic2: '. Allow the microphone for this page (Chrome / Edge).', tBadFile: 'Could not read that audio file.',
+    tFileDec: (n, f) => `${f}: ${n} decode${n === 1 ? '' : 's'}`, tCopied: 'Copied', tCopyBlocked: 'Copy blocked by the browser',
+    tLogged: c => `Logged ${c}`, tNoCall: 'Enter the DX call first', tPttErr: 'PTT error: ', tNeedCall: 'Set your call and grid in Settings first',
+    tNoSerial: 'Web Serial is not available in this browser — use Chrome or Edge, or VOX.', tPortOk: 'PTT port connected', tPortGone: 'PTT port disconnected',
+    tPortErr: 'Port error: ', tWd: 'TX watchdog: no progress — TX disabled', tOutDev: 'Output device: ',
+    tCleared: 'Log cleared', engineW: 'Audio engine: AudioWorklet + decoder in a Web Worker.', engineS: 'Audio engine: ScriptProcessor (fallback).',
+    portConnected: m => `Serial port connected · PTT via ${m}.`, tClk: ms => `Clock correction now ${ms >= 0 ? '+' : ''}${ms} ms`, tClkNo: 'Not enough decodes yet to measure DT',
+    tBadMsg: 'This message cannot be encoded in FT8', tCalling: c => `Calling ${c}`, tQsoDone: c => `QSO with ${c} complete`, tLate: 'Too late in this period — TX starts next period',
+    tDecSlow: ms => `Decoding took ${ms} ms — try Normal depth`, tNoRx: 'Start the sound card or the demo first',
+    free: 'Free text or any message, Enter = send', st_idle: 'No QSO', st_cq: 'Calling CQ', st_call: c => `Calling <b>${c}</b>`, st_rpt: c => `Report to <b>${c}</b>`,
+    st_rrpt: c => `R+report to <b>${c}</b>`, st_rr73: c => `RR73 to <b>${c}</b>`, st_73: c => `73 to <b>${c}</b>`, st_free: 'Free text',
+    bandOther: 'Other', p1: '1st', p2: '2nd',
+  },
+  fr: {
+    install: "Installer l'app", start: '▶ Démarrer la carte son', stopCard: '■ Arrêter la carte son', demo: 'Démo', openWav: 'Ouvrir WAV', log: 'Log',
+    wfHint: 'clic : fréq. RX · Maj+clic / clic droit : fréq. TX', rxHz: 'RX Hz', txHz: 'TX Hz', tx2rxTip: 'Fréquence RX = fréquence TX', rx2txTip: 'Fréquence TX = fréquence RX',
+    parTip: 'Émettre dans la 1re (00/30 s) ou la 2e (15/45 s) période', autoTip: 'Répondre automatiquement avec le message suivant du QSO',
+    txEnable: 'Activer TX', txEnabled: 'TX activé', halt: 'Stop TX', tune: 'Tune', tuning: 'Tune…',
+    activity: 'Activité de la bande', rxfreq: 'Fréquence RX & mes QSO', cqOnly: 'CQ seuls', clear: 'Effacer', decodes: n => `${n} décodages`,
+    readyTitle: 'Prêt pour le FT8', readyText: "Reliez l'audio du transceiver, saisissez votre indicatif et votre locator dans les Réglages, puis cliquez sur Démarrer la carte son. Ou essayez la démo : une bande simulée où des stations lancent appel et vous répondent.",
+    runDemo: 'Lancer la démo', dxCall: 'INDICATIF DX', dxGrid: 'LOCATOR', rptSent: 'Report envoyé', rptRcvd: 'Report reçu', dialTip: 'Fréquence affichée en MHz (pour le log)', logQso: 'Logger (F9)',
+    settingsT: 'Réglages', done: 'OK', station: 'Station', myCall: 'Mon indicatif', myGrid: 'Mon locator (4 ou 6)', language: 'Langue',
+    depth: 'Profondeur de décodage', fast: 'Rapide', normal: 'Normale', deep: 'Profonde', apDec: 'Décodage a priori (AP)', on: 'Oui', off: 'Non',
+    cqMod: 'Modificateur CQ (DX, NA, EU, TEST…)', rr73: 'Message final', after73: 'Après le 73', disableTx: 'Couper le TX', callCq: 'Reprendre le CQ',
+    autoLog: 'Logger le QSO', automatic: 'Automatiquement', manual: 'Manuellement (F9)', watchdog: 'Chien de garde TX (minutes)', decodeAt: 'Décoder à (s dans la période)',
+    clockT: 'Horloge', clockOff: "Correction d'horloge (ms)", syncClk: 'Corriger d’après les DT', zeroClk: 'Revenir à l’horloge système',
+    clockNote: "Le FT8 demande une horloge à ±1 s de l'UTC environ. Le mieux : synchroniser l'ordinateur (NTP). Si le DT de la plupart des stations est loin de 0, utilisez « Corriger d’après les DT ».",
+    audio: 'Audio', inDev: 'Entrée (depuis le TRX)', outDev: 'Sortie (vers le TRX)', inGain: "Gain d'entrée", txLvl: 'Niveau audio TX', monitor: "Écoute de l'audio RX",
+    alcNote: "Réglez le niveau TX pour que l'ALC ne bouge pas. Le FT8 est à enveloppe constante ; trop de niveau crée des produits parasites qui gênent les autres.",
+    pttMethod: 'Méthode PTT', choosePort: 'Choisir le port série…', pttLead: 'Avance PTT (ms)', portNote: "Le PTT série utilise Web Serial (Chrome / Edge). RTS et DTR sont relâchés dès l'ouverture du port.",
+    display: 'Affichage', wfRange: 'Plage du waterfall', wfSpan: 'Hauteur du waterfall', wfLabels: 'Indicatifs sur le waterfall',
+    logT: 'Log', exportAdif: 'Exporter ADIF', copyAdif: 'Copier ADIF', clearLog: 'Vider le log', confirmClear: 'Cliquez encore pour confirmer', call: 'Indicatif', gridH: 'Locator', band: 'Bande', sent: 'Envoyé', rcvdH: 'Reçu',
+    idle: 'ARRÊT', new: 'NOUVEAU', dupeB: 'DÉJÀ FAIT', qsos: n => `${n} QSO`, dtTip: "Décalage temporel médian des stations décodées. Loin de 0 = votre horloge est décalée.",
+    settingsTip: 'Réglages',
+    tDemo: 'Démo : une bande simulée. Cliquez un CQ (en vert) pour l’appeler, ou choisissez Tx6 + Activer TX pour lancer appel — quelqu’un répondra.',
+    tNoMic: 'Accès à la carte son refusé : ', tNoMic2: '. Autorisez le micro pour cette page (Chrome / Edge).', tBadFile: 'Impossible de lire ce fichier audio.',
+    tFileDec: (n, f) => `${f} : ${n} décodage${n > 1 ? 's' : ''}`, tCopied: 'Copié', tCopyBlocked: 'Copie bloquée par le navigateur',
+    tLogged: c => `${c} loggé`, tNoCall: "Saisissez d'abord l'indicatif DX", tPttErr: 'Erreur PTT : ', tNeedCall: "Saisissez d'abord votre indicatif et votre locator dans les Réglages",
+    tNoSerial: "Web Serial n'est pas disponible dans ce navigateur — utilisez Chrome ou Edge, ou le VOX.", tPortOk: 'Port PTT connecté', tPortGone: 'Port PTT déconnecté',
+    tPortErr: 'Erreur de port : ', tWd: 'Chien de garde : pas de progrès — TX coupé', tOutDev: 'Périphérique de sortie : ',
+    tCleared: 'Log vidé', engineW: 'Moteur audio : AudioWorklet + décodeur dans un Web Worker.', engineS: 'Moteur audio : ScriptProcessor (secours).',
+    portConnected: m => `Port série connecté · PTT par ${m}.`, tClk: ms => `Correction d'horloge : ${ms >= 0 ? '+' : ''}${ms} ms`, tClkNo: 'Pas encore assez de décodages pour mesurer le DT',
+    tBadMsg: 'Ce message ne peut pas être codé en FT8', tCalling: c => `Appel de ${c}`, tQsoDone: c => `QSO avec ${c} terminé`, tLate: 'Trop tard dans cette période — émission à la suivante',
+    tDecSlow: ms => `Le décodage a pris ${ms} ms — essayez la profondeur Normale`, tNoRx: 'Démarrez d’abord la carte son ou la démo',
+    free: 'Texte libre ou tout message, Entrée = envoyer', st_idle: 'Pas de QSO', st_cq: 'Appel CQ', st_call: c => `Appel de <b>${c}</b>`, st_rpt: c => `Report à <b>${c}</b>`,
+    st_rrpt: c => `R+report à <b>${c}</b>`, st_rr73: c => `RR73 à <b>${c}</b>`, st_73: c => `73 à <b>${c}</b>`, st_free: 'Texte libre',
+    bandOther: 'Autre', p1: '1re', p2: '2e',
+  },
+};
+let LANG = 'en';
+const t = (k, ...a) => { const v = (STR[LANG] && STR[LANG][k]) ?? STR.en[k] ?? k; return typeof v === 'function' ? v(...a) : v; };
+function applyI18n() {
+  LANG = S.lang === 'auto' ? ((navigator.language || 'en').toLowerCase().startsWith('fr') ? 'fr' : 'en') : S.lang;
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(e => { e.textContent = t(e.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(e => { e.placeholder = t(e.dataset.i18nPh); });
+  document.querySelectorAll('[data-i18n-title]').forEach(e => { e.title = t(e.dataset.i18nTitle); });
+  $('bSettings').title = t('settingsTip');
+  setRunning(running); renderTxMsgs(); syncUi(); updateDupe(); fillBands();
+}
+
+/* ================= settings & storage ================= */
+const BANDS = [['160m', 1.840], ['80m', 3.573], ['60m', 5.357], ['40m', 7.074], ['30m', 10.136], ['20m', 14.074], ['17m', 18.100], ['15m', 21.074],
+  ['12m', 24.915], ['10m', 28.074], ['6m', 50.313], ['4m', 70.154], ['2m', 144.174]];
+const S = Object.assign({
+  call: '', grid: '', lang: 'auto', depth: 3, ap: 1, cqMod: '', rr73: 'RR73', stop73: 1, autoLog: 1, wd: 6, decAt: 13.9,
+  clk: 0, gain: 1, txLvl: 0.3, mon: 0, ptt: 'vox', lead: 80, inId: '', outId: '', range: '200-3000', span: 30, labels: 1,
+  rxf: 1500, txf: 1500, par: 0, auto: true, dial: '14.074',
+}, load('webft8'));
+let LOG = load('webft8-log', []);
+function load(k, d = {}) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } }
+function save() { try { localStorage.setItem('webft8', JSON.stringify(S)); } catch (e) {} }
+function saveLog() { try { localStorage.setItem('webft8-log', JSON.stringify(LOG)); } catch (e) {} }
+const toast = (m, ms = 2600) => { const e = $('toast'); e.textContent = m; e.classList.add('show'); clearTimeout(e._h); e._h = setTimeout(() => e.classList.remove('show'), ms); };
+const DEMO_ME = ['F4XYZ', 'JN18']; // used in demo mode when no call is set
+const myCall = () => (S.call || '').trim().toUpperCase() || (running === 'DEMO' ? DEMO_ME[0] : '');
+const myGrid4 = () => (S.grid || '').trim().toUpperCase().slice(0, 4) || (running === 'DEMO' && !(S.call || '').trim() ? DEMO_ME[1] : '');
+const pad2 = n => String(n).padStart(2, '0');
+const hhmmss = ms => { const d = new Date(ms); return pad2(d.getUTCHours()) + pad2(d.getUTCMinutes()) + pad2(d.getUTCSeconds()); };
+const fmtRpt = v => (v < 0 ? '-' : '+') + pad2(Math.min(49, Math.abs(Math.round(v))));
+const isGrid = x => /^[A-R]{2}\d{2}$/.test(x || '') && x !== 'RR73'; // RR73 is a valid square, but means RR73
+const isRpt = x => /^[+-]\d{2}$/.test(x || '');
+const isRRpt = x => /^R[+-]\d{2}$/.test(x || '');
+const bare = c => String(c || '').replace(/^<|>$/g, '');
+
+/* ================= clock ================= */
+const nowUtc = () => Date.now() + (+S.clk || 0);
+const perfToUtc = p => p + (Date.now() - performance.now()) + (+S.clk || 0);
+const utcToPerf = u => u - (+S.clk || 0) - (Date.now() - performance.now());
+
+/* ================= decoder worker ================= */
+const WORKER = `
+const dec = new FT8.Ft8Decoder();
+function noiseFill(x, sigma, seed) { let s = seed >>> 0 || 1; const r = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let i = 0; i < x.length; i += 2) { const u = r() || 1e-9, v = r(), m = sigma * Math.sqrt(-2 * Math.log(u)); x[i] += m * Math.cos(6.283185307 * v); if (i + 1 < x.length) x[i + 1] += m * Math.sin(6.283185307 * v); } }
+onmessage = e => {
+  const m = e.data;
+  if (m.type === 'decode') {
+    const t0 = Date.now();
+    for (const c of m.calls || []) dec.hash.add(c);
+    let res = [];
+    try { res = FT8.decodeSlot(m.samples, m.rate, m.opts, dec); } catch (err) { postMessage({ type: 'error', msg: String(err && err.stack || err) }); }
+    postMessage({ type: 'decoded', id: m.id, slot: m.slot, ms: Date.now() - t0, results: res.map(r => ({ freq: r.freq, dt: r.dt, snr: r.snr, text: r.text, ap: r.ap,
+      call1: r.msg.call1 || '', call2: r.msg.call2 || '', extra: r.msg.extra || '', free: !!(r.msg.free || r.msg.telemetry) })) });
+  } else if (m.type === 'synth') { // demo band: signals + white noise
+    const x = new Float32Array(Math.round(m.secs * m.rate)); const sigma = m.noise;
+    noiseFill(x, sigma, m.seed);
+    for (const s of m.sigs) {
+      const tones = FT8.textToTones(s.text); if (!tones) continue;
+      const A = Math.sqrt(2 * Math.pow(10, s.snr / 10) * sigma * sigma * 2500 / (m.rate / 2));
+      const fd = s.fade || 0, fr = s.fadeHz || 0.1, ph = s.fadePh || 0, fs = m.rate;
+      FT8.synth(tones, { sampleRate: m.rate, f0: s.f0, amplitude: A, out: x, offset: Math.round((0.5 + s.dt) * m.rate) - (m.skip || 0), phase: ph,
+        fade: fd ? (i => 1 - fd * (0.5 + 0.5 * Math.sin(6.2832 * fr * i / fs + ph))) : null });
+    }
+    postMessage({ type: 'synth', id: m.id, data: x }, [x.buffer]);
+  }
+};`;
+let worker = null, mainDec = null, wkJobs = new Map(), wkId = 0;
+function startWorker() {
+  try {
+    const url = URL.createObjectURL(new Blob([$('core').textContent + '\n' + WORKER], { type: 'application/javascript' }));
+    worker = new Worker(url);
+    worker.onmessage = e => { const m = e.data; if (m.type === 'error') { console.error(m.msg); return; } const cb = wkJobs.get(m.id); if (cb) { wkJobs.delete(m.id); cb(m); } };
+    worker.onerror = e => { console.warn('worker failed, decoding on the main thread', e.message); worker = null; };
+  } catch (e) { worker = null; }
+}
+function wkCall(msg, transfer) {
+  return new Promise(res => {
+    const id = ++wkId; msg.id = id;
+    if (worker) { wkJobs.set(id, res); worker.postMessage(msg, transfer || []); return; }
+    // fallback: same work on the main thread
+    setTimeout(() => {
+      if (!mainDec) mainDec = new FT8.Ft8Decoder();
+      if (msg.type === 'decode') {
+        for (const c of msg.calls || []) mainDec.hash.add(c);
+        const t0 = Date.now(), r = FT8.decodeSlot(msg.samples, msg.rate, msg.opts, mainDec);
+        res({ type: 'decoded', id, slot: msg.slot, ms: Date.now() - t0, results: r.map(q => ({ freq: q.freq, dt: q.dt, snr: q.snr, text: q.text, ap: q.ap,
+          call1: q.msg.call1 || '', call2: q.msg.call2 || '', extra: q.msg.extra || '', free: !!(q.msg.free || q.msg.telemetry) })) });
+      } else if (msg.type === 'synth') {
+        const x = new Float32Array(Math.round(msg.secs * msg.rate));
+        for (let i = 0; i < x.length; i++) x[i] = msg.noise * (Math.random() + Math.random() + Math.random() - 1.5) * 2;
+        for (const s of msg.sigs) { const tn = FT8.textToTones(s.text); if (tn) FT8.synth(tn, { sampleRate: msg.rate, f0: s.f0, amplitude: Math.sqrt(2 * Math.pow(10, s.snr / 10) * msg.noise ** 2 * 2500 / (msg.rate / 2)), out: x, offset: Math.round((0.5 + s.dt) * msg.rate) - (msg.skip || 0) }); }
+        res({ type: 'synth', id, data: x });
+      }
+    }, 0);
+  });
+}
+
+/* ================= audio engine ================= */
+let ctx = null, analyser = null, inGain = null, monGain = null, outGain = null, src = null, stream = null, engine = '';
+let running = false, serialPort = null;
+let RB = null, rbEnd = 0, rbFirst = -1, offEst = []; // ring buffer of captured audio, by absolute frame number
+const TAP = `
+class Ft8Tap extends AudioWorkletProcessor {
+  constructor() { super(); this.b = new Float32Array(2048); this.n = 0; }
+  process(inputs) { const x = inputs[0] && inputs[0][0]; if (x) for (let i = 0; i < x.length; i++) { this.b[this.n++] = x[i];
+    if (this.n === 2048) { this.port.postMessage({ end: currentFrame + i + 1, data: this.b }, [this.b.buffer]); this.b = new Float32Array(2048); this.n = 0; } }
+    return true; }
+}
+registerProcessor('ft8-tap', Ft8Tap);`;
+let ctxPromise = null;
+function ensureCtx() { return ctxPromise || (ctxPromise = buildCtx()); }
+async function buildCtx() {
+  ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  analyser = ctx.createAnalyser(); analyser.fftSize = 16384; analyser.smoothingTimeConstant = 0;
+  analyser.minDecibels = -140; analyser.maxDecibels = 0;
+  fftData = new Float32Array(analyser.frequencyBinCount); accSpec = new Float32Array(analyser.frequencyBinCount);
+  inGain = ctx.createGain(); inGain.gain.value = S.gain;
+  monGain = ctx.createGain(); monGain.gain.value = +S.mon;
+  outGain = ctx.createGain();
+  const sink = ctx.createGain(); sink.gain.value = 0; sink.connect(ctx.destination);
+  inGain.connect(analyser); inGain.connect(monGain); monGain.connect(ctx.destination); outGain.connect(ctx.destination);
+  RB = new Float32Array(Math.round(ctx.sampleRate * 40));
+  try {
+    if (!ctx.audioWorklet) throw new Error('no worklet');
+    const url = URL.createObjectURL(new Blob([TAP], { type: 'application/javascript' }));
+    await ctx.audioWorklet.addModule(url);
+    const node = new AudioWorkletNode(ctx, 'ft8-tap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+    node.port.onmessage = e => onAudio(e.data.end, e.data.data);
+    inGain.connect(node); node.connect(sink); engine = 'worklet';
+  } catch (e) {
+    const proc = ctx.createScriptProcessor(4096, 1, 1); let frames = 0;
+    proc.onaudioprocess = ev => { const x = ev.inputBuffer.getChannelData(0); frames += x.length; onAudio(frames, Float32Array.from(x)); };
+    inGain.connect(proc); proc.connect(sink); engine = 'script';
+  }
+  $('engineInfo').textContent = t(engine === 'worklet' ? 'engineW' : 'engineS');
+  if (S.outId && ctx.setSinkId) ctx.setSinkId(S.outId).catch(() => {});
+}
+/* store samples; estimate the wall-clock time of each frame from the smallest observed delivery delay */
+function onAudio(end, data) {
+  const n = data.length, N = RB.length, fs = ctx.sampleRate;
+  if (rbFirst < 0 || end - n > rbEnd + fs) rbFirst = end - n;
+  for (let i = 0; i < n; i++) RB[(end - n + i) % N] = data[i];
+  rbEnd = end;
+  const p = performance.now(), est = p - end / fs * 1000;
+  offEst.push([p, est]); while (offEst.length && offEst[0][0] < p - 20000) offEst.shift();
+}
+function frameOffsetMs() { let m = Infinity; for (const [, e] of offEst) if (e < m) m = e; return m - (ctx.baseLatency || 0) * 1000; }
+function frameAtUtc(u) { return Math.round((utcToPerf(u) - frameOffsetMs()) * ctx.sampleRate / 1000); }
+function extract(f0, n) {
+  const out = new Float32Array(n), N = RB.length; let valid = 0;
+  for (let i = 0; i < n; i++) { const f = f0 + i; if (f >= rbFirst && f < rbEnd && f >= rbEnd - N) { out[i] = RB[f % N]; valid++; } }
+  return { x: out, valid };
+}
+function stopSource() {
+  if (demo) { for (const b of demo.nodes) { try { b.stop(); } catch (e) {} } demo = null; }
+  if (src) { try { src.stop && src.stop(); } catch (e) {} try { src.disconnect(); } catch (e) {} src = null; }
+  if (stream) { stream.getTracks().forEach(x => x.stop()); stream = null; }
+}
+async function startMic() {
+  await ensureCtx(); await ctx.resume(); stopSource();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: S.inId ? { exact: S.inId } : undefined,
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+  } catch (e) { toast(t('tNoMic') + (e.message || e.name) + t('tNoMic2'), 6000); return; }
+  src = ctx.createMediaStreamSource(stream); src.connect(inGain);
+  setRunning('LIVE'); listDevices();
+}
+function setRunning(kind) {
+  running = kind; $('empty').style.display = kind ? 'none' : '';
+  $('bStart').textContent = kind === 'LIVE' ? t('stopCard') : t('start');
+  $('bDemo').classList.toggle('on', kind === 'DEMO');
+  setTxUi(); if (typeof curTx !== 'undefined') renderTxMsgs();
+}
+
+/* ================= slot loop: decode, schedule TX ================= */
+let lastDecSlot = -1, pendingDec = new Set(), txSlots = new Set(), decMs = 0;
+let txActive = null; // {slot, node, text}
+let tuneNode = null;
+const dtHist = []; // [slot, dt]
+function tick() {
+  const u = nowUtc(), k = Math.floor(u / 15000), tt = u - k * 15000;
+  // decode the slot that is ending
+  if (ctx && running && running !== 'FILE' && tt >= S.decAt * 1000 && lastDecSlot < k) { lastDecSlot = k; if (!txSlots.has(k)) decodeSlot(k); }
+  if (txEnabled && !tuneNode) scheduleTx(u);
+  if (txEnabled && lastProgress && u - lastProgress > S.wd * 60000) { setTxEnabled(false); toast(t('tWd'), 5000); }
+  if (demo) demoTick(u);
+  updateClock(u);
+}
+async function decodeSlot(k) {
+  const fs = ctx.sampleRate, f0 = frameAtUtc(k * 15000);
+  const { x, valid } = extract(f0, Math.round(15 * fs));
+  if (valid < 10 * fs) return;
+  pendingDec.add(k);
+  const calls = [myCall(), bare(dx.call)].filter(Boolean);
+  const opts = { depth: +S.depth, fmin: 100, fmax: 3300, ap: +S.ap ? { cq: +S.depth >= 3, mycall: FT8.isStdCall(myCall()) ? myCall() : '', dxcall: FT8.isStdCall(bare(dx.call)) ? bare(dx.call) : '' } : null };
+  const res = await wkCall({ type: 'decode', samples: x, rate: fs, slot: k, opts, calls }, [x.buffer]);
+  pendingDec.delete(k);
+  decMs = res.ms; $('cDec').textContent = res.ms + ' ms';
+  if (res.ms > 2500 && +S.depth >= 3 && !decodeSlot.warned) { decodeSlot.warned = true; toast(t('tDecSlow', res.ms), 5000); }
+  onDecodes(k, res.results);
+}
+
+/* ================= decodes: display ================= */
+const actEl = $('act'), rxfEl = $('rxf');
+let cqOnly = false;
+function onDecodes(k, list, label) {
+  const utc = label || hhmmss(k * 15000);
+  list.sort((a, b) => a.freq - b.freq);
+  for (const r of list) { r.slot = k; r.utc = utc; dtHist.push([k, r.dt]); }
+  while (dtHist.length > 200) dtHist.shift();
+  updateDtChip();
+  addSep(actEl, utc, k);
+  for (const r of list) addLine(actEl, r);
+  const mine = list.filter(r => involvesMe(r) || Math.abs(r.freq - S.rxf) <= 30);
+  if (mine.length) for (const r of mine) addLine(rxfEl, r);
+  trimList(actEl); trimList(rxfEl);
+  $('actCount').textContent = t('decodes', list.length);
+  if (+S.labels) labelWaterfall(k, list);
+  if (k != null) autoSeq(k, list);
+}
+function involvesMe(r) { const me = myCall(); return !!me && (bare(r.call1) === me || bare(r.call2) === me || (r.dxped && bare(r.dxped) === me)); }
+function addSep(el, utc, k) {
+  const d = document.createElement('div'); d.className = 'sep'; d.textContent = utc.slice(0, 2) + ':' + utc.slice(2, 4) + ':' + utc.slice(4, 6);
+  const stick = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.appendChild(d); if (stick) el.scrollTop = el.scrollHeight;
+}
+function addLine(el, r) {
+  const d = document.createElement('div');
+  const isCq = /^CQ( |$)/.test(r.call1);
+  if (cqOnly && el === actEl && !isCq && !involvesMe(r)) return;
+  d.className = 'ln' + (involvesMe(r) && bare(r.call1) === myCall() ? ' tome' : isCq ? ' cq' : '');
+  const cells = [r.utc, (r.snr >= 0 ? '+' : '') + r.snr, r.dt.toFixed(1), Math.round(r.freq)];
+  cells.forEach((c, i) => { const s = document.createElement('span'); s.className = i ? 'n' : ''; if (!i) s.style.color = 'var(--dim)'; s.textContent = c; d.appendChild(s); });
+  const m = document.createElement('span'); m.className = 'm';
+  for (const [i, w] of r.text.split(' ').entries()) {
+    if (i) m.appendChild(document.createTextNode(' '));
+    const c = bare(w);
+    if (!r.free && /\d/.test(c) && /[A-Z]/.test(c) && c.length >= 3 && !isGrid(c) && !isRpt(c) && !isRRpt(c) && c !== 'RR73') {
+      const s = document.createElement('span'); s.className = 'call'; s.dataset.call = c; s.textContent = w; styleCall(s); m.appendChild(s);
+    } else m.appendChild(document.createTextNode(w));
+  }
+  if (r.ap) { const a = document.createElement('span'); a.className = 'ap'; a.textContent = r.ap; m.appendChild(a); }
+  d.appendChild(m);
+  d._r = r;
+  d.onclick = e => pickDecode(r, e.shiftKey || e.ctrlKey);
+  const stick = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  el.appendChild(d); if (stick) el.scrollTop = el.scrollHeight;
+}
+function addTxLine(text, slot) {
+  const d = document.createElement('div'); d.className = 'ln mytx';
+  for (const c of [hhmmss(slot * 15000), 'Tx', '', Math.round(S.txf)]) { const s = document.createElement('span'); s.className = 'n'; s.textContent = c; d.appendChild(s); }
+  d.firstChild.className = ''; d.firstChild.style.color = 'var(--dim)';
+  const m = document.createElement('span'); m.className = 'm'; m.textContent = text; d.appendChild(m);
+  const stick = rxfEl.scrollHeight - rxfEl.scrollTop - rxfEl.clientHeight < 40;
+  rxfEl.appendChild(d); if (stick) rxfEl.scrollTop = rxfEl.scrollHeight; trimList(rxfEl);
+}
+function trimList(el) { while (el.children.length > 600) el.removeChild(el.firstChild); }
+function styleCall(s) {
+  const c = s.dataset.call;
+  s.classList.toggle('me', c === myCall());
+  s.classList.toggle('worked', c !== myCall() && workedBefore(c));
+}
+function restyleCalls() { document.querySelectorAll('.list .call').forEach(styleCall); }
+function updateDtChip() {
+  const recent = dtHist.filter(([k]) => k >= Math.floor(nowUtc() / 15000) - 8).map(([, d]) => d).sort((a, b) => a - b);
+  const el = $('cDt');
+  if (recent.length < 3) { $('cDtV').textContent = '--'; el.classList.remove('warn'); return null; }
+  const med = recent[recent.length >> 1];
+  $('cDtV').textContent = (med >= 0 ? '+' : '') + med.toFixed(2) + ' s';
+  el.classList.toggle('warn', Math.abs(med) > 0.6);
+  return med;
+}
+
+/* ================= QSO state & auto-sequence ================= */
+// curTx: 1 grid, 2 report, 3 R+report, 4 RR73, 5 73, 6 CQ, 7 free text
+const dx = { call: '', grid: '', rptS: '', rptR: '', freq: null, logged: false, timeOn: 0 };
+let curTx = 6, txEnabled = false, lastProgress = 0, freeText = '';
+function txText(n) {
+  const me = myCall(), c = dx.call || 'DX', g = myGrid4(), r = dx.rptS || '-10';
+  switch (n) {
+    case 1: return `${c} ${me} ${g}`.trim();
+    case 2: return `${c} ${me} ${r}`;
+    case 3: return `${c} ${me} R${r}`;
+    case 4: return `${c} ${me} ${S.rr73}`;
+    case 5: return `${c} ${me} 73`;
+    case 6: return (`CQ ${S.cqMod ? S.cqMod.toUpperCase() + ' ' : ''}${me} ${g}`).trim();
+    case 7: return freeText;
+  }
+  return '';
+}
+function renderTxMsgs() {
+  const el = $('txmsgs'); el.innerHTML = '';
+  for (let n = 1; n <= 6; n++) {
+    const b = document.createElement('button'); b.className = 'btn' + (curTx === n ? ' next' : '') + (txActive && txActive.n === n ? ' sending' : '');
+    b.innerHTML = `<kbd>Tx${n}</kbd>`; b.appendChild(document.createTextNode(txText(n)));
+    b.title = 'F' + n; b.onclick = () => { setCur(n); }; b.ondblclick = () => { setCur(n); setTxEnabled(true); };
+    el.appendChild(b);
+  }
+  const f = document.createElement('div'); f.className = 'free';
+  const inp = document.createElement('input'); inp.id = 'freeIn'; inp.placeholder = t('free'); inp.value = freeText; inp.maxLength = 37;
+  const chk = () => { const v = FT8.normalize(inp.value); inp.classList.toggle('bad', !!v && !FT8.pack(v)); };
+  inp.oninput = chk;
+  inp.onkeydown = e => { if (e.key === 'Enter') { const v = FT8.normalize(inp.value); if (!v) return; if (!FT8.pack(v)) { toast(t('tBadMsg')); return; } freeText = v; setCur(7); setTxEnabled(true); } };
+  const b7 = document.createElement('button'); b7.className = 'btn sm' + (curTx === 7 ? ' next' : ''); b7.textContent = 'Tx7';
+  b7.onclick = () => { const v = FT8.normalize(inp.value); if (!v || !FT8.pack(v)) { toast(t('tBadMsg')); return; } freeText = v; setCur(7); };
+  f.append(inp, b7); el.appendChild(f); chk();
+  renderQState();
+}
+function setCur(n) { curTx = n; lastProgress = nowUtc(); renderTxMsgs(); }
+function renderQState() {
+  const c = dx.call, el = $('qstate');
+  el.innerHTML = { 1: t('st_call', c), 2: t('st_rpt', c), 3: t('st_rrpt', c), 4: t('st_rr73', c), 5: t('st_73', c), 6: t('st_cq'), 7: t('st_free') }[curTx] || t('st_idle');
+}
+function setDx(call, grid, freq) {
+  if (call !== dx.call) { dx.logged = false; dx.rptR = ''; dx.timeOn = nowUtc(); }
+  dx.call = call; if (grid) dx.grid = grid; if (freq != null) dx.freq = freq;
+  $('dxCall').value = dx.call; $('dxGrid').value = dx.grid; $('rptR').value = dx.rptR; $('rptS').value = dx.rptS;
+  updateDupe(); renderTxMsgs();
+}
+/* click on a decoded line: call that station, like a double-click in WSJT-X */
+function pickDecode(r, alsoTx) {
+  const me = myCall();
+  const from = bare(r.call2);
+  if (!from || r.free || from === me || from === '...') return;
+  if (!me) { toast(t('tNeedCall')); openSettings(); return; }
+  const grid = isGrid(r.extra) ? r.extra : (r.extra && r.extra.startsWith('R ') && isGrid(r.extra.slice(2)) ? r.extra.slice(2) : '');
+  if (from !== dx.call) { dx.grid = ''; }
+  dx.rptS = fmtRpt(r.snr);
+  setDx(from, grid, r.freq);
+  S.rxf = Math.round(r.freq); if (alsoTx) S.txf = S.rxf;
+  S.par = (r.slot != null ? (r.slot + 1) % 2 : S.par);
+  syncUi(); save();
+  if (bare(r.call1) === me) nextFromReply(r.extra);
+  else setCur(1);
+  setTxEnabled(true);
+  toast(t('tCalling', from), 1500);
+}
+/* given what the DX sent us, choose our next message */
+function nextFromReply(x) {
+  if (x === '73' && curTx !== 4 && curTx !== 5 && curTx !== 3) return; // a stray 73
+  if (isGrid(x) || x === '') return setCur(2);
+  if (isRpt(x)) { dx.rptR = x; $('rptR').value = x; return setCur(3); }
+  if (isRRpt(x)) { dx.rptR = x.slice(1); $('rptR').value = dx.rptR; return setCur(4); }
+  if (x === 'RRR' || x === 'RR73') { qsoComplete(); return setCur(5); }
+  if (x === '73') { qsoComplete(); finishQso(); }
+}
+function finishQso() {
+  if (+S.stop73) setTxEnabled(false);
+  setCur(6);
+}
+function qsoComplete() {
+  if (dx.logged) return;
+  if (+S.autoLog) logQso(true); else dx.logged = 'pending';
+  toast(t('tQsoDone', dx.call), 2500);
+}
+function autoSeq(k, list) {
+  if (!S.auto || !txEnabled) return;
+  const me = myCall(); if (!me) return;
+  if ((k + 1) % 2 !== S.par) return; // only the period just before one of our TX periods matters
+  const toMe = list.filter(r => bare(r.call1) === me && !r.free);
+  const sentLast = txSlots.has(k - 1);
+  let r = null;
+  if (curTx !== 6 && dx.call) r = toMe.find(q => bare(q.call2) === dx.call);
+  if (!r && curTx === 6) { // someone answered our CQ: take the strongest new caller
+    const cand = toMe.filter(q => !['73', 'RR73', 'RRR'].includes(q.extra) && !(bare(q.call2) === dx.call && dx.logged)).sort((a, b) => b.snr - a.snr);
+    r = cand[0];
+    if (r) { dx.grid = ''; dx.rptR = ''; dx.rptS = fmtRpt(r.snr); setDx(bare(r.call2), isGrid(r.extra) ? r.extra : '', r.freq); }
+  }
+  if (!r) {
+    if (curTx === 4 && sentLast && dx.logged) finishQso(); // our RR73 went out and nothing came back: done
+    return;
+  }
+  if (r.extra && !isRRpt(r.extra) && !isRpt(r.extra) && !isGrid(r.extra) && !['RRR', 'RR73', '73'].includes(r.extra)) return;
+  if (isGrid(r.extra) || r.extra === '' || !dx.rptS) dx.rptS = fmtRpt(r.snr);
+  $('rptS').value = dx.rptS;
+  const before = curTx;
+  nextFromReply(r.extra);
+  if (curTx !== before || r.extra === '73') lastProgress = nowUtc();
+}
+/* ================= transmit ================= */
+function setTxEnabled(on) {
+  if (on && (!myCall() || (!myGrid4() && curTx !== 7))) { toast(t('tNeedCall')); openSettings(); return; }
+  txEnabled = on; if (on) lastProgress = nowUtc();
+  if (!on && txActive && txActive.node && nowUtc() - txActive.start < 0) haltTx();
+  setTxUi();
+}
+function scheduleTx(u) {
+  if (!ctx || txActive) return;
+  const k = Math.floor(u / 15000), tt = u - k * 15000;
+  const T = tt >= 14500 ? k + 1 : k, rt = u - T * 15000;
+  if (T % 2 !== S.par || txSlots.has(T)) return;
+  if (rt > 2000) return;
+  if (rt < -500) return;
+  if (pendingDec.has(T - 1) && rt < 1300) return; // wait for the previous period's decodes (auto-sequence)
+  const text = FT8.normalize(txText(curTx));
+  const tones = FT8.textToTones(text);
+  if (!tones) { toast(t('tBadMsg')); setTxEnabled(false); return; }
+  txSlots.add(T);
+  const start = Math.max(T * 15000 + 500, u + 120);
+  transmit(tones, text, start, T);
+}
+async function transmit(tones, text, startUtc, slot) {
+  await ensureCtx(); await ctx.resume();
+  const fs = ctx.sampleRate;
+  const buf = FT8.synth(tones, { sampleRate: fs, f0: +S.txf, amplitude: +S.txLvl });
+  const b = ctx.createBuffer(1, buf.length, fs); b.copyToChannel(buf, 0);
+  const node = ctx.createBufferSource(); node.buffer = b;
+  const g = ctx.createGain(); g.gain.value = running === 'DEMO' ? 0 : 1; node.connect(g); g.connect(outGain);
+  txActive = { node, text, start: startUtc, slot, n: curTx, gain: g };
+  const lead = Math.max(0, +S.lead), now = nowUtc();
+  setTimeout(async () => { if (txActive && txActive.node === node) { if (!(await ptt(true))) { haltTx(); return; } setTxUi(); } }, Math.max(0, startUtc - lead - now));
+  const when = ctx.currentTime + Math.max(0.02, (startUtc - nowUtc()) / 1000 - (ctx.outputLatency || ctx.baseLatency || 0));
+  node.start(when);
+  addTxLine(text, slot); renderTxMsgs();
+  if (demo) demoHear(text, slot);
+  const sentN = curTx;
+  node.onended = async () => {
+    if (txActive && txActive.node === node) { txActive = null; await ptt(false); setTxUi(); renderTxMsgs(); }
+    if (sentN === 4 && S.auto) qsoComplete();          // RR73 sent: the QSO counts
+    if (sentN === 5 && S.auto) { qsoComplete(); finishQso(); } // 73 sent: done
+  };
+}
+function haltTx() {
+  if (txActive) { const n = txActive.node; txActive = null; try { n.stop(); } catch (e) {} }
+  if (tuneNode) { try { tuneNode.stop(); } catch (e) {} tuneNode = null; }
+  ptt(false); setTxUi(); renderTxMsgs();
+}
+async function tune() {
+  if (tuneNode) { haltTx(); return; }
+  await ensureCtx(); await ctx.resume();
+  const o = ctx.createOscillator(); o.frequency.value = +S.txf; const g = ctx.createGain(); g.gain.value = +S.txLvl;
+  o.connect(g); g.connect(outGain); tuneNode = o;
+  if (!(await ptt(true))) { haltTx(); return; }
+  o.start(); setTxUi();
+  setTimeout(() => { if (tuneNode === o) haltTx(); }, 30000);
+}
+function setTxUi() {
+  const c = $('cState'), on = !!(txActive && nowUtc() >= txActive.start - 50) || !!tuneNode;
+  c.classList.toggle('txon', on); c.classList.toggle('rx', !on);
+  c.textContent = tuneNode ? 'TUNE' : on ? 'TX' : (running ? 'RX · ' + running : t('idle'));
+  $('bTxEn').classList.toggle('on', txEnabled); $('bTxEn').textContent = txEnabled ? t('txEnabled') : t('txEnable');
+  $('bTune').classList.toggle('on', !!tuneNode); $('bTune').textContent = tuneNode ? t('tuning') : t('tune');
+}
+/* PTT over Web Serial: both lines are always driven explicitly */
+async function ptt(on) {
+  if (S.ptt === 'vox' || !serialPort) return true;
+  try {
+    await serialPort.setSignals(S.ptt === 'rts' ? { requestToSend: on, dataTerminalReady: false } : { dataTerminalReady: on, requestToSend: false });
+    return true;
+  } catch (e) { toast(t('tPttErr') + e.message, 4000); if (on) { try { await serialPort.setSignals({ requestToSend: false, dataTerminalReady: false }); } catch (x) {} } return false; }
+}
+async function choosePort() {
+  if (!('serial' in navigator)) { toast(t('tNoSerial'), 5000); return; }
+  try {
+    const p = await navigator.serial.requestPort();
+    await p.open({ baudRate: 9600 });
+    await p.setSignals({ requestToSend: false, dataTerminalReady: false });
+    serialPort = p;
+    if (S.ptt === 'vox') { S.ptt = 'rts'; $('sPtt').value = 'rts'; save(); }
+    $('portInfo').textContent = t('portConnected', S.ptt.toUpperCase()); toast(t('tPortOk'));
+  } catch (e) { if (e.name !== 'NotFoundError') toast(t('tPortErr') + e.message); }
+}
+if ('serial' in navigator) navigator.serial.addEventListener('disconnect', e => {
+  if (serialPort && e.target === serialPort) { serialPort = null; haltTx(); setTxEnabled(false); toast(t('tPortGone'), 4000); $('portInfo').textContent = t('portNote'); }
+});
+window.addEventListener('pagehide', () => { if (serialPort) { try { serialPort.setSignals({ requestToSend: false, dataTerminalReady: false }); } catch (e) {} } });
+
+/* ================= log ================= */
+function curBand() { const f = parseFloat(String(S.dial).replace(',', '.')); const b = BANDS.find(([, m]) => Math.abs(m - f) < Math.max(0.5, m * 0.05)); return b ? b[0] : ''; }
+function workedBefore(c) { const b = curBand(); return LOG.some(q => q.call === c && q.band === b); }
+function updateDupe() {
+  const c = ($('dxCall').value || '').trim().toUpperCase(), b = $('dupe');
+  b.className = 'badge' + (c ? (workedBefore(c) ? ' dupe' : ' new') : '');
+  b.textContent = c ? (workedBefore(c) ? t('dupeB') : t('new')) : '—';
+  $('cBand').textContent = (curBand() || '—') + ' · ' + S.dial;
+}
+function logQso(auto) {
+  const call = bare(($('dxCall').value || '').trim().toUpperCase());
+  if (!call) { toast(t('tNoCall')); return false; }
+  const now = new Date(nowUtc()), mhz = parseFloat(String(S.dial).replace(',', '.')) || 0;
+  LOG.push({ call, grid: ($('dxGrid').value || '').toUpperCase(), time: new Date(dx.timeOn || nowUtc()).toISOString(), timeOff: now.toISOString(),
+    mhz: (mhz + (+S.txf) / 1e6).toFixed(6), dial: S.dial, band: curBand(), rstS: $('rptS').value || dx.rptS, rstR: $('rptR').value || dx.rptR });
+  saveLog(); dx.logged = true; updateDupe(); restyleCalls(); renderLog();
+  toast(t('tLogged', call), 1600); return true;
+}
+function adifField(k, v) { v = String(v ?? ''); return v ? `<${k}:${new TextEncoder().encode(v).length}>${v} ` : ''; }
+function toAdif() {
+  const ts = new Date().toISOString().replace(/[-:]/g, '');
+  let s = `WebFT8 log export\n<ADIF_VER:5>3.1.4 <PROGRAMID:6>WebFT8 <CREATED_TIMESTAMP:15>${ts.slice(0, 8)} ${ts.slice(9, 15)} <EOH>\n`;
+  for (const q of LOG) {
+    const d = q.time.replace(/[-:]/g, ''), e = (q.timeOff || q.time).replace(/[-:]/g, '');
+    s += adifField('CALL', q.call) + adifField('GRIDSQUARE', q.grid) + adifField('MODE', 'FT8') + adifField('QSO_DATE', d.slice(0, 8)) + adifField('TIME_ON', d.slice(9, 15)) +
+      adifField('QSO_DATE_OFF', e.slice(0, 8)) + adifField('TIME_OFF', e.slice(9, 15)) + adifField('BAND', q.band) + adifField('FREQ', q.mhz) +
+      adifField('RST_SENT', q.rstS) + adifField('RST_RCVD', q.rstR) + adifField('STATION_CALLSIGN', S.call.toUpperCase()) + adifField('MY_GRIDSQUARE', (S.grid || '').toUpperCase()) + '<EOR>\n';
+  }
+  return s;
+}
+function renderLog() {
+  $('logCount').textContent = t('qsos', LOG.length);
+  const tb = $('logBody'); tb.innerHTML = '';
+  LOG.slice().reverse().forEach((q, ri) => {
+    const i = LOG.length - 1 - ri, tr = document.createElement('tr');
+    for (const c of [q.time.slice(5, 10).replace('-', '/') + ' ' + q.time.slice(11, 16), q.call, q.grid, q.band, q.mhz, q.rstS, q.rstR]) { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); }
+    const x = document.createElement('td'); x.className = 'x'; x.textContent = '✕';
+    x.onclick = () => { LOG.splice(i, 1); saveLog(); renderLog(); updateDupe(); restyleCalls(); };
+    tr.appendChild(x); tb.appendChild(tr);
+  });
+}
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+/* ================= WAV files ================= */
+async function decodeFiles(files) {
+  await ensureCtx();
+  for (const file of files) {
+    let audio;
+    try { audio = await ctx.decodeAudioData(await file.arrayBuffer()); } catch (e) { toast(t('tBadFile')); continue; }
+    if (!running) { $('empty').style.display = 'none'; }
+    const x = audio.getChannelData(0), fs = audio.sampleRate, n = Math.round(15 * fs);
+    const m = /(\d{6})_(\d{6})/.exec(file.name);
+    let total = 0;
+    for (let i = 0, j = 0; i < x.length - 8 * fs; i += n, j++) {
+      const seg = x.slice(i, i + n);
+      const res = await wkCall({ type: 'decode', samples: seg, rate: fs, slot: null, opts: { depth: +S.depth, fmin: 100, fmax: 3300 }, calls: [myCall()] }, [seg.buffer]);
+      let label = '000000';
+      if (m) { const s0 = +m[2].slice(0, 2) * 3600 + +m[2].slice(2, 4) * 60 + +m[2].slice(4, 6) + 15 * j; label = pad2(Math.floor(s0 / 3600) % 24) + pad2(Math.floor(s0 / 60) % 60) + pad2(s0 % 60); }
+      onDecodes(null, res.results, label); total += res.results.length;
+      $('cDec').textContent = res.ms + ' ms';
+    }
+    toast(t('tFileDec', total, file.name), 3000);
+  }
+}
+
+/* ================= display: waterfall, spectrum, clock ================= */
+const spec = $('spec'), wf = $('wf'), clock = $('clock');
+const sctx = spec.getContext('2d'), wctx = wf.getContext('2d'), kctx = clock.getContext('2d');
+let fftData = null, accSpec = null, accN = 0, rowAcc = 0, lastFrameT = 0, floorDb = -100, hoverF = null, dpr = 1, row = null, lastRowSlot = -1;
+const LUT = (() => {
+  const st = [[0, [4, 8, 20]], [0.22, [8, 40, 100]], [0.45, [0, 110, 180]], [0.62, [0, 190, 215]], [0.78, [255, 214, 10]], [0.92, [255, 120, 40]], [1, [255, 255, 255]]];
+  const l = new Uint8ClampedArray(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const v = i / 255; let k = 0; while (k < st.length - 2 && v > st[k + 1][0]) k++;
+    const [a, ca] = st[k], [b, cb] = st[k + 1], tt = (v - a) / (b - a);
+    for (let j = 0; j < 3; j++) l[i * 3 + j] = ca[j] + (cb[j] - ca[j]) * tt;
+  }
+  return l;
+})();
+function range() { return S.range.split('-').map(Number); }
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  for (const c of [spec, wf]) { c.width = Math.max(1, Math.round(c.clientWidth * dpr)); c.height = Math.max(1, Math.round(c.clientHeight * dpr)); }
+  clock.width = Math.max(1, Math.round(clock.clientWidth * dpr)); clock.height = clock.width;
+  row = wctx.createImageData(wf.width, 1);
+  wctx.fillStyle = '#04081a'; wctx.fillRect(0, 0, wf.width, wf.height);
+}
+window.addEventListener('resize', resize);
+const f2x = (f, w) => { const [a, b] = range(); return (f - a) / (b - a) * w; };
+const x2f = (x, w) => { const [a, b] = range(); return a + x / w * (b - a); };
+let lastPx = null;
+function draw(now) {
+  requestAnimationFrame(draw);
+  const dtF = Math.min(0.25, (now - (lastFrameT || now)) / 1000); lastFrameT = now;
+  if (!ctx || !running || running === 'FILE') { if (Math.floor(now / 500) !== draw._h) { draw._h = Math.floor(now / 500); drawSpec(null); } return; }
+  analyser.getFloatFrequencyData(fftData);
+  for (let i = 0; i < fftData.length; i++) accSpec[i] += Math.pow(10, fftData[i] / 10);
+  accN++;
+  const W = wf.width, H = wf.height;
+  rowAcc += dtF * H / +S.span;
+  if (rowAcc >= 1 && accN) {
+    const bw = ctx.sampleRate / analyser.fftSize, px = new Float32Array(W);
+    for (let x = 0; x < W; x++) {
+      const b0 = Math.floor(x2f(x, W) / bw), b1 = Math.max(b0 + 1, Math.floor(x2f(x + 1, W) / bw));
+      let m = 0; for (let b = b0; b < b1; b++) m = Math.max(m, accSpec[b] / accN);
+      px[x] = 10 * Math.log10(m + 1e-20);
+    }
+    accSpec.fill(0); accN = 0;
+    const sorted = Array.from(px).sort((a, b) => a - b), fl = sorted[Math.floor(W * 0.3)];
+    if (isFinite(fl)) floorDb += 0.1 * (fl - floorDb);
+    const nrow = Math.min(H, Math.floor(rowAcc)); rowAcc -= nrow;
+    wctx.drawImage(wf, 0, 0, W, H - nrow, 0, nrow, W, H - nrow);
+    const d = row.data;
+    for (let x = 0; x < W; x++) {
+      let v = (px[x] - floorDb + 4) / 34; v = v < 0 ? 0 : v > 1 ? 1 : v;
+      const k = (v * 255) | 0; d[x * 4] = LUT[k * 3]; d[x * 4 + 1] = LUT[k * 3 + 1]; d[x * 4 + 2] = LUT[k * 3 + 2]; d[x * 4 + 3] = 255;
+    }
+    for (let r = 0; r < nrow; r++) wctx.putImageData(row, 0, r);
+    const sl = Math.floor(nowUtc() / 15000);
+    if (sl !== lastRowSlot) { // period boundary
+      if (lastRowSlot >= 0) { wctx.fillStyle = '#ffffff30'; wctx.fillRect(0, 0, W, Math.max(1, dpr)); wctx.fillStyle = '#ffffff80'; wctx.font = `${9 * dpr}px JetBrains Mono, monospace`; wctx.textAlign = 'left'; wctx.fillText(hhmmss(sl * 15000).replace(/(\d\d)(\d\d)(\d\d)/, '$1:$2:$3'), 4 * dpr, 11 * dpr); }
+      lastRowSlot = sl;
+    }
+    lastPx = px;
+  }
+  if (lastPx) drawSpec(lastPx);
+}
+function labelWaterfall(k, list) {
+  if (k == null || !running) return;
+  const W = wf.width, H = wf.height, ago = (nowUtc() - (k + 1) * 15000) / 1000; // seconds since the end of that period
+  const y = Math.round(ago * H / +S.span) + 13 * dpr; if (y > H) return;
+  wctx.font = `600 ${10 * dpr}px JetBrains Mono, monospace`; wctx.textAlign = 'left';
+  for (const r of list) {
+    const x = f2x(r.freq, W); if (x < 0 || x > W) continue;
+    const lab = /^CQ/.test(r.call1) ? 'CQ ' + bare(r.call2) : bare(r.call2) || r.text.slice(0, 10);
+    wctx.fillStyle = '#000000a0'; const tw = wctx.measureText(lab).width; wctx.fillRect(x, y - 10 * dpr, tw + 4 * dpr, 12 * dpr);
+    wctx.fillStyle = bare(r.call1) === myCall() ? '#ff9b9b' : /^CQ/.test(r.call1) ? '#38e1c6' : '#e6edf3'; wctx.fillText(lab, x + 2 * dpr, y);
+  }
+}
+function drawSpec(px) {
+  const W = spec.width, H = spec.height;
+  sctx.fillStyle = '#0d131b'; sctx.fillRect(0, 0, W, H);
+  if (px) {
+    const g = sctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#3fb6ff66'); g.addColorStop(1, '#3fb6ff05');
+    sctx.beginPath(); sctx.moveTo(0, H);
+    for (let x = 0; x < W; x += 2) { const v = Math.max(0, Math.min(1, (px[x] - floorDb + 3) / 40)); sctx.lineTo(x, H - 16 * dpr - v * (H - 22 * dpr)); }
+    sctx.lineTo(W, H); sctx.closePath(); sctx.fillStyle = g; sctx.fill();
+    sctx.strokeStyle = '#7fd0ff'; sctx.lineWidth = dpr; sctx.stroke();
+  }
+  // scale
+  const [a, b] = range();
+  sctx.fillStyle = '#8b98a9'; sctx.font = `${10 * dpr}px JetBrains Mono, monospace`; sctx.textAlign = 'center';
+  const step = (b - a) > 1500 ? 100 : 50;
+  for (let f = Math.ceil(a / step) * step; f <= b; f += step) {
+    const x = f2x(f, W); const big = f % (step * 5) === 0;
+    sctx.fillRect(x, H - 14 * dpr, dpr, (big ? 6 : 3) * dpr);
+    if (big && x > 14 * dpr && x < W - 14 * dpr) sctx.fillText(f, x, H - 2 * dpr);
+  }
+  // RX (green) and TX (red) markers: 50 Hz wide (8 tones)
+  const bw = 50 / ((b - a) / W);
+  for (const [f, col, lab, y] of [[S.rxf, '#3ddc84', 'RX', 0], [S.txf, '#ff6b6b', 'TX', 6 * dpr]]) {
+    const x = f2x(f, W);
+    sctx.fillStyle = col + '22'; sctx.fillRect(x, 0, bw, H - 14 * dpr);
+    sctx.fillStyle = col; sctx.fillRect(x, y, bw, 3 * dpr); sctx.fillRect(x, y, dpr, H - 14 * dpr - y);
+    sctx.font = `600 ${9 * dpr}px Inter, sans-serif`; sctx.textAlign = 'left'; sctx.fillText(lab, x + 3 * dpr, y + 13 * dpr);
+  }
+  if (hoverF != null) { const x = f2x(hoverF, W); sctx.fillStyle = '#ffffff55'; sctx.fillRect(x, 0, dpr, H); sctx.fillStyle = '#fff'; sctx.textAlign = 'center'; sctx.fillText(Math.round(hoverF), x, 32 * dpr); }
+}
+function updateClock(u) {
+  const d = new Date(u), k = Math.floor(u / 15000), tt = (u - k * 15000) / 1000, mine = k % 2 === S.par;
+  $('cUtc').textContent = pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ':' + pad2(d.getUTCSeconds());
+  $('cSlotBar').style.width = (tt / 15 * 100) + '%';
+  $('cSlot').classList.toggle('mine', mine && txEnabled);
+  $('cSlotTxt').textContent = t(k % 2 ? 'p2' : 'p1') + ' · ' + pad2(Math.floor(tt)) + 's' + (mine && txEnabled ? ' · TX' : '');
+  // ring clock
+  const W = clock.width, r = W / 2, c = kctx;
+  c.clearRect(0, 0, W, W);
+  c.lineWidth = 6 * dpr; c.lineCap = 'round';
+  c.strokeStyle = '#1b2431'; c.beginPath(); c.arc(r, r, r - 6 * dpr, 0, 6.2832); c.stroke();
+  const txNow = txActive && u >= txActive.start - 50;
+  c.strokeStyle = txNow ? '#ff6b6b' : (mine && txEnabled ? '#ff6b6b88' : '#3fb6ff');
+  c.beginPath(); c.arc(r, r, r - 6 * dpr, -1.5708, -1.5708 + 6.2832 * tt / 15); c.stroke();
+  // signal span marker 0.5 .. 13.14 s
+  c.strokeStyle = '#ffffff18'; c.lineWidth = 2 * dpr; c.beginPath(); c.arc(r, r, r - 13 * dpr, -1.5708 + 6.2832 * 0.5 / 15, -1.5708 + 6.2832 * 13.14 / 15); c.stroke();
+  c.fillStyle = '#e6edf3'; c.textAlign = 'center'; c.font = `600 ${22 * dpr}px JetBrains Mono, monospace`; c.fillText(pad2(Math.floor(tt)), r, r + 5 * dpr);
+  c.fillStyle = txNow ? '#ff6b6b' : '#8b98a9'; c.font = `600 ${10 * dpr}px Inter, sans-serif`;
+  c.fillText(txNow ? 'TX' : t(k % 2 ? 'p2' : 'p1'), r, r + 19 * dpr);
+  if (!clock._lastTx || clock._lastTx !== txNow) { clock._lastTx = txNow; setTxUi(); }
+}
+for (const el of [spec, $('wfbox')]) {
+  const cv = el === spec ? spec : wf;
+  const fAt = e => { const r = cv.getBoundingClientRect(); return Math.round(x2f((e.clientX - r.left) * dpr, cv.width)); };
+  el.addEventListener('click', e => { const f = Math.max(100, Math.min(3400, fAt(e) - 25)); if (e.shiftKey) S.txf = f; else S.rxf = f; syncUi(); save(); });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); S.txf = Math.max(100, Math.min(3400, fAt(e) - 25)); syncUi(); save(); });
+  el.addEventListener('mousemove', e => { hoverF = x2f((e.clientX - cv.getBoundingClientRect().left) * dpr, cv.width); });
+  el.addEventListener('mouseleave', () => hoverF = null);
+}
+
+/* ================= demo: a simulated band that answers you ================= */
+let demo = null;
+const DEMO_CALLS = ['DL1ABC', 'G4XYZ', 'EA3AB', 'I2QRP', 'OK1DX', 'SP5ZZ', 'PA3KLM', 'ON4ABC', 'HB9TT', 'OE3XYZ', 'LZ1AA', 'YO3RU', 'UR5EE', 'SM5ABC', 'OH2BH', 'LA9XX',
+  'K1ABC', 'W9XYZ', 'N5RT', 'VE3JJ', 'JA1QRP', 'VK2DX', 'ZS6AB', 'PY2XX', 'LU1AA', 'CT1EEE', 'EI7AB', 'GM3TT', '9A2AB', 'S51DX', 'HA5LL', 'YU1ZZ'];
+const DEMO_GRIDS = ['JO62', 'IO91', 'JN11', 'JN45', 'JO70', 'KO02', 'JO21', 'JO20', 'JN47', 'JN78', 'KN12', 'KN34', 'KN98', 'JO89', 'KP20', 'JP50',
+  'FN42', 'EN52', 'EM10', 'FN03', 'PM95', 'QF56', 'KG33', 'GG66', 'GF05', 'IM58', 'IO63', 'IO86', 'JN95', 'JN76', 'JN97', 'KN04'];
+function rndPick(a) { return a[Math.floor(Math.random() * a.length)]; }
+function demoStart() {
+  const me = (S.call || '').trim().toUpperCase() || DEMO_ME[0];
+  const used = new Set([me]);
+  const mk = () => { let c; do { c = rndPick(DEMO_CALLS); } while (used.has(c)); used.add(c); return { call: c, grid: DEMO_GRIDS[DEMO_CALLS.indexOf(c)] }; };
+  const stations = [];
+  // background QSO threads
+  for (let i = 0; i < 6; i++) {
+    const a = mk(), b = mk();
+    stations.push({ kind: 'thread', a, b, fa: 300 + Math.random() * 2500, fb: 300 + Math.random() * 2500, sa: -20 + Math.random() * 22, sb: -20 + Math.random() * 22,
+      par: i % 2, step: Math.floor(Math.random() * 7), da: Math.random() * 0.5 - 0.1, db: Math.random() * 0.5 - 0.1, fade: Math.random() < 0.4 ? 0.6 : 0 });
+  }
+  // stations calling CQ that answer you
+  for (let i = 0; i < 3; i++) { const a = mk(); stations.push({ kind: 'cq', ...a, f: 400 + i * 800 + Math.random() * 300, snr: [-6, -14, -19][i], par: i % 2, dt: 0.1 + Math.random() * 0.3, state: 'cq', last: '', tries: 0, idle: 0 }); }
+  // a station that answers your CQ
+  const ans = mk(); stations.push({ kind: 'ans', ...ans, f: 0, snr: -9, dt: 0.2, state: 'idle', last: '', tries: 0, par: 0 });
+  demo = { me, stations, heard: new Map(), synthFor: new Set(), nodes: [], seed: 1 };
+}
+async function startDemo() {
+  await ensureCtx(); await ctx.resume(); stopSource();
+  demoStart();
+  setRunning('DEMO'); toast(t('tDemo'), 7000);
+  const u = nowUtc(), k = Math.floor(u / 15000);
+  demoSynth(k, u); demoSynth(k + 1);
+}
+/* the user transmitted `text` in period `slot`: stations react in the next period */
+function demoHear(text, slot) { if (demo) demo.heard.set(slot, FT8.normalize(text)); }
+function demoTick(u) {
+  const k = Math.floor(u / 15000), tt = u - k * 15000;
+  if (tt > 9000 && !demo.synthFor.has(k + 1)) demoSynth(k + 1);
+}
+function demoMessages(k) {
+  const out = [], me = demo.me, heard = demo.heard.get(k - 1) || '', par = k % 2;
+  const parts = heard.split(' ');
+  let hTo = parts[0], hFrom = parts[1], hX = parts.slice(2).join(' ');
+  if (hTo === 'CQ' && parts.length >= 3 && !/\d/.test(parts[1])) { hFrom = parts[2]; hX = parts.slice(3).join(' '); }
+  const userCalled = (c) => hTo === c && hFrom === me;
+  for (const s of demo.stations) {
+    if (s.kind === 'thread') {
+      const seq = [[0, `CQ ${s.a.call} ${s.a.grid}`], [1, `${s.a.call} ${s.b.call} ${s.b.grid}`], [0, `${s.b.call} ${s.a.call} ${fmtRpt(s.sb)}`],
+        [1, `${s.a.call} ${s.b.call} R${fmtRpt(s.sa)}`], [0, `${s.b.call} ${s.a.call} RR73`], [1, `${s.a.call} ${s.b.call} 73`], [0, null]];
+      const [who, text] = seq[s.step % seq.length];
+      const thisPar = who === 0 ? s.par : 1 - s.par;
+      if (thisPar !== par) continue;
+      s.step++;
+      if (s.step % seq.length === 0) { const nb = DEMO_CALLS.filter(c => c !== me && !demo.stations.some(x => x.a && (x.a.call === c || x.b.call === c)) && !demo.stations.some(x => x.call === c)); const c = rndPick(nb.length ? nb : DEMO_CALLS); s.b = { call: c, grid: DEMO_GRIDS[DEMO_CALLS.indexOf(c)] }; s.fb = 300 + Math.random() * 2500; s.sb = -20 + Math.random() * 22; }
+      if (text) out.push({ text, f0: who === 0 ? s.fa : s.fb, snr: (who === 0 ? s.sa : s.sb), dt: who === 0 ? s.da : s.db, fade: s.fade, fadeHz: 0.07, fadePh: Math.random() * 6 });
+    } else if (s.kind === 'cq' || s.kind === 'ans') {
+      if (s.par !== par && (s.kind === 'cq' || s.state !== 'idle')) continue;
+      let msg = null; const rpt = fmtRpt(-18 + Math.random() * 16);
+      if (userCalled(s.call)) {
+        s.tries = 0;
+        if (isGrid(hX) || hX === '') { s.state = 'rpt'; msg = `${me} ${s.call} ${rpt}`; }
+        else if (isRpt(hX)) { s.state = 'rrpt'; msg = `${me} ${s.call} R${rpt}`; }
+        else if (isRRpt(hX)) { s.state = 'rr73'; msg = `${me} ${s.call} RR73`; }
+        else if (hX === 'RR73' || hX === 'RRR') { s.state = 'done'; msg = `${me} ${s.call} 73`; }
+        else if (hX === '73') { s.state = s.kind === 'cq' ? 'cq' : 'idle'; s.last = ''; }
+        if (msg) s.last = msg;
+      } else if (s.kind === 'ans' && /^CQ /.test(heard) && hFrom === me && s.state === 'idle' && txSlots.has(k - 1)) {
+        s.state = 'call'; s.par = par; s.f = Math.max(300, Math.min(2800, S.txf + (Math.random() < 0.5 ? -1 : 1) * (60 + Math.random() * 250)));
+        msg = s.last = `${me} ${s.call} ${s.grid}`; s.tries = 0;
+      } else if (s.state !== 'cq' && s.state !== 'idle' && s.last) {
+        if (s.state === 'done' || ++s.tries > 3) { s.state = s.kind === 'cq' ? 'cq' : 'idle'; s.last = ''; s.tries = 0; if (s.kind === 'ans') { const n = DEMO_CALLS.filter(c => c !== me && !demo.stations.some(x => x.call === c)); s.call = rndPick(n); s.grid = DEMO_GRIDS[DEMO_CALLS.indexOf(s.call)]; s.snr = -18 + Math.random() * 14; } }
+        else msg = s.last;
+      }
+      if (!msg && s.kind === 'cq' && s.state === 'cq') { if (++s.idle % 3 !== 2) msg = `CQ ${s.call} ${s.grid}`; }
+      if (msg) out.push({ text: msg, f0: s.f, snr: s.snr, dt: s.dt });
+    }
+  }
+  return out;
+}
+async function demoSynth(k, partialFrom) {
+  if (!demo || demo.synthFor.has(k)) return;
+  demo.synthFor.add(k);
+  const d0 = demo;
+  const fs = ctx.sampleRate, sigs = demoMessages(k);
+  const skip = partialFrom ? Math.max(0, Math.round((partialFrom - k * 15000) / 1000 * fs) + Math.round(0.15 * fs)) : 0;
+  const res = await wkCall({ type: 'synth', rate: fs, secs: 15 - skip / fs, noise: 0.03, sigs: partialFrom ? sigs.filter(() => false) : sigs, seed: (demo.seed++ * 7919) | 0, skip });
+  if (demo !== d0) return;
+  const b = ctx.createBuffer(1, res.data.length, fs); b.copyToChannel(res.data, 0);
+  const n = ctx.createBufferSource(); n.buffer = b; n.connect(inGain);
+  const startUtc = k * 15000 + skip / fs * 1000;
+  n.start(ctx.currentTime + Math.max(0, (startUtc - nowUtc()) / 1000));
+  demo.nodes.push(n); n.onended = () => { if (demo) demo.nodes = demo.nodes.filter(x => x !== n); };
+}
+
+/* ================= UI wiring ================= */
+function fillBands() {
+  const sel = $('band'), cur = curBand();
+  sel.innerHTML = BANDS.map(([b, f]) => `<option value="${f}">${b} · ${f.toFixed(3)}</option>`).join('') + `<option value="">${t('bandOther')}</option>`;
+  const hit = BANDS.find(([b]) => b === cur); sel.value = hit && Math.abs(hit[1] - parseFloat(S.dial)) < 0.001 ? String(hit[1]) : '';
+}
+function syncUi() {
+  $('qRx').value = Math.round(S.rxf); $('qTx').value = Math.round(S.txf);
+  $('tPar').textContent = 'TX ' + t(S.par ? 'p2' : 'p1'); $('tPar').classList.add('on');
+  $('tAuto').classList.toggle('on', !!S.auto);
+  $('dial').value = S.dial;
+}
+function openSettings() { $('modal').classList.add('open'); listDevices(); }
+async function listDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) return;
+  const devs = await navigator.mediaDevices.enumerateDevices();
+  const fill = (sel, kind, cur) => {
+    sel.innerHTML = '<option value="">Default</option>';
+    devs.filter(d => d.kind === kind).forEach((d, i) => { const o = document.createElement('option'); o.value = d.deviceId; o.textContent = d.label || `${kind} ${i + 1}`; sel.appendChild(o); });
+    sel.value = cur || '';
+  };
+  fill($('sIn'), 'audioinput', S.inId); fill($('sOut'), 'audiooutput', S.outId);
+}
+const isOpen = () => $('modal').classList.contains('open') || $('logModal').classList.contains('open');
+$('bStart').onclick = () => { if (running === 'LIVE') { stopSource(); setRunning(false); } else startMic(); };
+$('bStart2').onclick = startMic;
+$('bDemo').onclick = $('bDemo2').onclick = () => { if (running === 'DEMO') { stopSource(); setRunning(false); } else startDemo(); };
+$('bFile').onclick = () => $('fileIn').click();
+$('fileIn').onchange = e => { const f = Array.from(e.target.files); if (f.length) decodeFiles(f); e.target.value = ''; };
+$('bSettings').onclick = openSettings;
+$('bClose').onclick = () => $('modal').classList.remove('open');
+$('modal').onclick = e => { if (e.target.id === 'modal') $('modal').classList.remove('open'); };
+$('bLog').onclick = () => { renderLog(); $('logModal').classList.add('open'); };
+$('bLogClose').onclick = () => $('logModal').classList.remove('open');
+$('logModal').onclick = e => { if (e.target.id === 'logModal') $('logModal').classList.remove('open'); };
+$('bAdif').onclick = () => download('webft8-' + new Date().toISOString().slice(0, 10) + '.adi', toAdif(), 'text/plain');
+$('bAdifCopy').onclick = () => navigator.clipboard.writeText(toAdif()).then(() => toast(t('tCopied')), () => toast(t('tCopyBlocked')));
+$('bLogClear').onclick = e => {
+  const b = e.currentTarget;
+  if (!b.dataset.arm) { b.dataset.arm = '1'; b.textContent = t('confirmClear'); setTimeout(() => { delete b.dataset.arm; b.textContent = t('clearLog'); }, 3000); return; }
+  delete b.dataset.arm; b.textContent = t('clearLog'); LOG = []; saveLog(); renderLog(); updateDupe(); restyleCalls(); toast(t('tCleared'));
+};
+$('bLogQso').onclick = () => logQso(false);
+$('dxCall').addEventListener('input', () => { const v = $('dxCall').value.trim().toUpperCase(); if (v !== dx.call) { dx.call = v; dx.logged = false; dx.timeOn = nowUtc(); } updateDupe(); renderTxMsgs(); });
+$('dxGrid').addEventListener('input', () => { dx.grid = $('dxGrid').value.trim().toUpperCase(); });
+$('rptS').addEventListener('input', () => { dx.rptS = $('rptS').value.trim(); renderTxMsgs(); });
+$('rptR').addEventListener('input', () => { dx.rptR = $('rptR').value.trim(); });
+$('dial').addEventListener('change', e => { S.dial = e.target.value.replace(',', '.'); save(); fillBands(); updateDupe(); restyleCalls(); });
+$('band').onchange = e => { if (e.target.value) { S.dial = (+e.target.value).toFixed(3); save(); syncUi(); updateDupe(); restyleCalls(); } };
+$('qRx').onchange = e => { S.rxf = Math.max(100, Math.min(3400, +e.target.value || 1500)); syncUi(); save(); };
+$('qTx').onchange = e => { S.txf = Math.max(100, Math.min(3400, +e.target.value || 1500)); syncUi(); save(); };
+$('bTx2Rx').onclick = () => { S.rxf = S.txf; syncUi(); save(); };
+$('bRx2Tx').onclick = () => { S.txf = S.rxf; syncUi(); save(); };
+$('tPar').onclick = () => { S.par = 1 - S.par; syncUi(); save(); };
+$('tAuto').onclick = () => { S.auto = !S.auto; syncUi(); save(); };
+$('bTxEn').onclick = () => { if (!running) { toast(t('tNoRx')); return; } setTxEnabled(!txEnabled); };
+$('bHalt').onclick = () => { setTxEnabled(false); haltTx(); };
+$('bTune').onclick = tune;
+$('bCqOnly').onclick = () => { cqOnly = !cqOnly; $('bCqOnly').classList.toggle('on', cqOnly); };
+$('bClrAct').onclick = () => { actEl.innerHTML = ''; };
+$('bClrRxf').onclick = () => { rxfEl.innerHTML = ''; };
+$('bSyncClk').onclick = () => { const m = updateDtChip(); if (m == null) { toast(t('tClkNo')); return; } S.clk = Math.round((+S.clk || 0) - m * 1000); $('sClk').value = S.clk; dtHist.length = 0; updateDtChip(); save(); toast(t('tClk', S.clk)); };
+$('bZeroClk').onclick = () => { S.clk = 0; $('sClk').value = 0; save(); toast(t('tClk', 0)); };
+const bind = (id, key, fn) => { const el = $(id); el.value = S[key]; el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { S[key] = el.type === 'range' || el.type === 'number' ? +el.value : el.value; save(); fn && fn(); }); };
+bind('sCall', 'call', () => { S.call = S.call.toUpperCase().trim(); restyleCalls(); renderTxMsgs(); });
+bind('sGrid', 'grid', () => { S.grid = S.grid.toUpperCase().trim(); renderTxMsgs(); });
+bind('sLang', 'lang', applyI18n);
+bind('sDepth', 'depth'); bind('sAp', 'ap'); bind('sCqMod', 'cqMod', () => { S.cqMod = S.cqMod.toUpperCase().trim(); renderTxMsgs(); });
+bind('sRr73', 'rr73', renderTxMsgs); bind('sStop73', 'stop73'); bind('sAutoLog', 'autoLog'); bind('sWd', 'wd'); bind('sDecAt', 'decAt');
+bind('sClk', 'clk');
+bind('sGain', 'gain', () => inGain && (inGain.gain.value = S.gain));
+bind('sTxLvl', 'txLvl'); bind('sMon', 'mon', () => monGain && (monGain.gain.value = +S.mon));
+bind('sPtt', 'ptt'); bind('sLead', 'lead');
+bind('sRange', 'range', resize); bind('sSpan', 'span'); bind('sLabels', 'labels');
+bind('sIn', 'inId', () => { if (running === 'LIVE') startMic(); });
+bind('sOut', 'outId', () => { if (ctx && ctx.setSinkId) ctx.setSinkId(S.outId || '').catch(e => toast(t('tOutDev') + e.message)); });
+$('bPort').onclick = choosePort;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { setTxEnabled(false); haltTx(); $('modal').classList.remove('open'); $('logModal').classList.remove('open'); return; }
+  if (isOpen()) return;
+  if (e.key === 'F9') { e.preventDefault(); logQso(false); return; }
+  const m = /^F([1-6])$/.exec(e.key); if (m) { e.preventDefault(); setCur(+m[1]); }
+});
+
+/* ================= PWA ================= */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('bInstall').hidden = false; });
+$('bInstall').onclick = async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('bInstall').hidden = true; };
+if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+
+startWorker();
+syncUi(); applyI18n(); resize(); requestAnimationFrame(draw);
+setInterval(tick, 100); tick();
+window.__ft8 = { get act() { return actEl.textContent; }, get rxf() { return rxfEl.textContent; }, get log() { return LOG; }, get dx() { return dx; },
+  get curTx() { return curTx; }, get txEnabled() { return txEnabled; }, get engine() { return engine; }, get worker() { return !!worker; }, startDemo, setTxEnabled, setCur, pickDecode, S };
+})();
+</script>
+</body>
+</html>
