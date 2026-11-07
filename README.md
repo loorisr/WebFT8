@@ -2,7 +2,7 @@
 
 **FT8 for HF amateur radio that runs in your browser — no install, any OS.**
 
-WebFT8 decodes and transmits FT8 through your computer's sound card. It is a single self-contained HTML file: open it in Chrome or Edge, connect your rig's audio, set your call and grid, and start making QSOs. It is the sister project of [WebRTTY](https://loorisr.github.io/webrtty/).
+WebFT8 decodes and transmits FT8 through your computer's sound card. It is a single self-contained HTML file: open it in Chrome or Edge, connect your rig's audio, set your call and grid, and start making QSOs. It is the sister project of [WebRTTY](https://loorisr.github.io/WebRTTY/).
 
 ![WebFT8 screenshot](screenshot.png)
 
